@@ -374,7 +374,7 @@ export default function HomePage() {
     const newConversation = [...conversation, userMessage];
     setConversation(newConversation);
     setInput("");
-    setResult("");
+    // Don't clear result - keep it visible for user to copy
     setState("chatting");
     
     await saveToChat({ message: userMessage });
@@ -744,8 +744,8 @@ export default function HomePage() {
     bgCard: isDark ? "bg-zinc-900" : "bg-white",
     bgInput: isDark ? "bg-zinc-800" : "bg-white",
     sidebarBg: isDark ? "bg-zinc-900" : "bg-white",
-    promptBg: isDark ? "bg-gradient-to-br from-violet-950/80 to-purple-900/60 border-violet-700" : "bg-gradient-to-br from-violet-100 to-purple-50 border-violet-300",
-    promptText: isDark ? "text-violet-300" : "text-violet-700",
+    promptBg: isDark ? "bg-gradient-to-br from-teal-950/80 to-cyan-900/60 border-teal-700" : "bg-gradient-to-br from-teal-50 to-cyan-100 border-teal-300",
+    promptText: isDark ? "text-teal-300" : "text-teal-700",
     userBubble: isDark ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white",
     aiBubble: isDark ? "bg-zinc-800 text-white" : "bg-gray-100 text-gray-900",
     tipBg: isDark ? "bg-amber-950/30 border-amber-900" : "bg-amber-50 border-amber-200",
@@ -998,15 +998,15 @@ export default function HomePage() {
             
             <div ref={scrollRef} />
 
-            {/* Generated Result */}
-            {state === "generated" && result && (
+            {/* Generated Result - show if result exists and not currently generating */}
+            {result && state !== "generating" && (
               <div className={`mt-4 p-4 rounded-2xl ${theme.promptBg} border shadow-lg`}>
                 <div className="flex justify-between items-center mb-3">
                   <div className={`flex items-center gap-2 ${theme.promptText}`}>
                     <CheckCircle className="w-4 h-4" />
                     <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
                   </div>
-                  <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-violet-500/20 h-7`}>
+                  <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-teal-500/20 h-7`}>
                     {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
                   </Button>
@@ -1117,36 +1117,25 @@ export default function HomePage() {
             )}
 
             {state === "generated" && (
-              <div>
-                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl mb-2`}>
-                  <Textarea 
-                    ref={inputRef}
-                    placeholder="Add more details or ask for changes..." 
-                    value={input} 
-                    onChange={e => setInput(e.target.value)} 
-                    className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
-                    disabled={working}
-                    rows={1}
-                  />
-                  <Button 
-                    onClick={addMessageAfterGeneration} 
-                    disabled={!input.trim() || working} 
-                    size="icon"
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="flex justify-center gap-2">
-                  <Button 
-                    onClick={reset} 
-                    size="sm"
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-8 px-4"
-                  >
-                    <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> New Chat
-                  </Button>
-                </div>
+              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
+                <Textarea 
+                  ref={inputRef}
+                  placeholder="Add more details or ask for changes..." 
+                  value={input} 
+                  onChange={e => setInput(e.target.value)} 
+                  className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
+                  disabled={working}
+                  rows={1}
+                />
+                <Button 
+                  onClick={addMessageAfterGeneration} 
+                  disabled={!input.trim() || working} 
+                  size="icon"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
           </div>
