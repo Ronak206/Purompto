@@ -998,11 +998,11 @@ export default function HomePage() {
             
             {/* Render messages BEFORE the generated result */}
             {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
-              <div key={msg.id || i} className={`mb-3 flex ${msg.role === "user" ? "justify-end" : ""}`}>
+              <div key={msg.id || i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : ""}`}>
                 {msg.role === 'user' ? (
                   <div className="relative">
                     {/* User Avatar - top right corner */}
-                    <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
+                    <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
                       <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                     </div>
                     <div className="group relative">
@@ -1024,7 +1024,7 @@ export default function HomePage() {
                 ) : (
                   <div className="relative">
                     {/* AI Avatar - top left corner */}
-                    <div className="absolute -top-1 -left-1 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center z-10">
+                    <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center z-10">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
                     <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
@@ -1118,11 +1118,11 @@ export default function HomePage() {
             
             {/* Render messages AFTER the generated result */}
             {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
-              <div key={msg.id || `after-${i}`} className={`mb-3 flex ${msg.role === "user" ? "justify-end" : ""}`}>
+              <div key={msg.id || `after-${i}`} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : ""}`}>
                 {msg.role === 'user' ? (
                   <div className="relative">
                     {/* User Avatar - top right corner */}
-                    <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
+                    <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
                       <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                     </div>
                     <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
@@ -1132,7 +1132,7 @@ export default function HomePage() {
                 ) : (
                   <div className="relative">
                     {/* AI Avatar - top left corner */}
-                    <div className="absolute -top-1 -left-1 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center z-10">
+                    <div className="absolute -top-2 -left-2 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center z-10">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
                     <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
@@ -1199,62 +1199,50 @@ export default function HomePage() {
         <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
-              <div className="relative">
-                {/* User Avatar - top right corner */}
-                <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
-                  <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
-                </div>
-                <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                  <textarea 
-                    ref={(el) => { 
-                      (inputRef as any).current = el;
-                    }}
-                    placeholder="Describe what you want to create..." 
-                    value={task} 
-                    onChange={handleTaskChange}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                    className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
-                  />
-                  <Button 
-                    onClick={startConversation} 
-                    disabled={!task.trim() || working} 
-                    size="icon"
-                    className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
+              <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                  }}
+                  placeholder="Describe what you want to create..." 
+                  value={task} 
+                  onChange={handleTaskChange}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
+                  className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                />
+                <Button 
+                  onClick={startConversation} 
+                  disabled={!task.trim() || working} 
+                  size="icon"
+                  className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
             )}
 
             {(state === "chatting" || state === "generating") && (
               <div>
-                <div className="relative">
-                  {/* User Avatar - top right corner */}
-                  <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
-                    <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
-                  </div>
-                  <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                    <textarea 
-                      ref={(el) => { 
-                        (inputRef as any).current = el;
-                      }}
-                      placeholder="Type your answer..." 
-                      value={input} 
-                      onChange={handleInputChange}
-                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
-                      disabled={working}
-                      className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
-                    />
-                    <Button 
-                      onClick={sendMessage} 
-                      disabled={!input.trim() || working} 
-                      size="icon"
-                      className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
-                    >
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                  <textarea 
+                    ref={(el) => { 
+                      (inputRef as any).current = el;
+                    }}
+                    placeholder="Type your answer..." 
+                    value={input} 
+                    onChange={handleInputChange}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
+                    disabled={working}
+                    className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  />
+                  <Button 
+                    onClick={sendMessage} 
+                    disabled={!input.trim() || working} 
+                    size="icon"
+                    className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
                 <div className={`mt-2 flex items-center justify-center gap-1.5 text-xs ${theme.textMuted}`}>
                   <Lightbulb className="w-3 h-3 text-emerald-500" />
@@ -1264,32 +1252,26 @@ export default function HomePage() {
             )}
 
             {state === "generated" && (
-              <div className="relative">
-                {/* User Avatar - top right corner */}
-                <div className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center z-10">
-                  <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
-                </div>
-                <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                  <textarea 
-                    ref={(el) => { 
-                      (inputRef as any).current = el;
-                    }}
-                    placeholder="Add more details or ask for changes..." 
-                    value={input} 
-                    onChange={handleInputChange}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
-                    disabled={working}
-                    className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
-                  />
-                  <Button 
-                    onClick={addMessageAfterGeneration} 
-                    disabled={!input.trim() || working} 
-                    size="icon"
-                    className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
+              <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                  }}
+                  placeholder="Add more details or ask for changes..." 
+                  value={input} 
+                  onChange={handleInputChange}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
+                  disabled={working}
+                  className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                />
+                <Button 
+                  onClick={addMessageAfterGeneration} 
+                  disabled={!input.trim() || working} 
+                  size="icon"
+                  className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
           </div>
