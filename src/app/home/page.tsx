@@ -91,19 +91,6 @@ export default function HomePage() {
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(false);
   
-  // Optimized input handlers to prevent INP blocking
-  const handleTaskChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    // Use requestAnimationFrame to defer state update
-    requestAnimationFrame(() => setTask(value));
-  }, []);
-  
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    // Use requestAnimationFrame to defer state update
-    requestAnimationFrame(() => setInput(value));
-  }, []);
-  
   // Auto-resize textarea
   const adjustTextareaHeight = useCallback((textarea: HTMLTextAreaElement | null) => {
     if (!textarea) return;
@@ -111,6 +98,25 @@ export default function HomePage() {
     const newHeight = Math.min(textarea.scrollHeight, 200);
     textarea.style.height = newHeight + 'px';
   }, []);
+  
+  // Optimized input handlers to prevent INP blocking
+  const handleTaskChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
+    requestAnimationFrame(() => {
+      setTask(value);
+      adjustTextareaHeight(e.target);
+    });
+  }, [adjustTextareaHeight]);
+  
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
+    requestAnimationFrame(() => {
+      setInput(value);
+      adjustTextareaHeight(e.target);
+    });
+  }, [adjustTextareaHeight]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -1240,13 +1246,13 @@ export default function HomePage() {
                   value={task} 
                   onChange={handleTaskChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={startConversation} 
                   disabled={!task.trim() || working} 
                   size="icon"
-                  className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -1265,13 +1271,13 @@ export default function HomePage() {
                     onChange={handleInputChange}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
                     disabled={working}
-                    className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                   />
                   <Button 
                     onClick={sendMessage} 
                     disabled={!input.trim() || working} 
                     size="icon"
-                    className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                    className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                   >
                     <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -1294,13 +1300,13 @@ export default function HomePage() {
                   onChange={handleInputChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
                   disabled={working}
-                  className={`flex-1 min-h-[120px] max-h-[200px] text-[15px] leading-[1.5] py-4 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={addMessageAfterGeneration} 
                   disabled={!input.trim() || working} 
                   size="icon"
-                  className="absolute top-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
                   <ArrowRight className="w-4 h-4" />
                 </Button>
