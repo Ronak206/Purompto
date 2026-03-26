@@ -705,8 +705,8 @@ export default function HomePage() {
     }
   };
   
-  // Retry function - uses stored conversation for current chat
-  const retryGeneration = () => {
+  // Retry function - re-analyze to check if enough info before generating
+  const retryGeneration = async () => {
     const chatId = currentChatIdRef.current;
     // Get stored conversation for this chat
     const storedConversation = chatId ? chatConversations[chatId] : null;
@@ -733,7 +733,41 @@ export default function HomePage() {
           return updated;
         });
       }
-      generatePrompt(conversationToUse);
+      
+      // Re-analyze to check if we have enough info
+      setWorking(true);
+      try {
+        const r = await authFetch("/api/analyze", { method: "POST" }, { 
+          task, 
+          conversation: conversationToUse.map(m => ({ role: m.role, content: m.content })) 
+        });
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        
+        // Update conversation with any new questions
+        if (d.questions && d.questions.length > 0) {
+          const assistantMessage: ChatMessage = { 
+            id: Date.now().toString(),
+            role: 'assistant', 
+            content: d.message,
+            questions: d.questions,
+            questionReasons: d.questionReasons
+          };
+          setConversation(prev => [...prev, assistantMessage]);
+          setState("chatting");
+        } else if (d.readyToGenerate) {
+          // Only generate if AI confirms ready
+          generatePrompt(conversationToUse);
+        } else {
+          // Continue chatting
+          setState("chatting");
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to analyze");
+        setState("chatting");
+      } finally {
+        setWorking(false);
+      }
     }
   }; 
 
@@ -964,47 +998,51 @@ export default function HomePage() {
             
             {/* Render messages BEFORE the generated result */}
             {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
-              <div key={msg.id || i} className={`mb-2.5 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+              <div key={msg.id || i} className={`mb-2.5 flex ${msg.role === "user" ? "justify-end items-end gap-2" : ""}`}>
                 {msg.role === 'user' ? (
-                  <div className="group relative">
-                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
-                      <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
-                    </div>
-                    {/* Retry button on hover - only show for last message before result when there's no result */}
-                    {i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
-                      <button
-                        onClick={() => {
-                          const conversationUpToThis = conversation.slice(0, i + 1);
-                          setConversation(conversationUpToThis);
-                          setChatConversations(prev => ({
-                            ...prev,
-                            [currentChatIdRef.current!]: conversationUpToThis
-                          }));
-                          generatePrompt(conversationUpToThis);
-                        }}
-                        className={`absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all`}
-                        title="Retry from here"
-                      >
-                        <RefreshCcw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
-                    <div className="prose prose-sm max-w-none">
-                      <MarkdownRenderer content={msg.content} />
-                      {msg.questions && msg.questions.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {msg.questions.map((q, qi) => (
-                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
-                              {msg.questionReasons?.[qi] && (
-                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                  <>
+                    <div className="group relative">
+                      <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
+                        <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
+                      </div>
+                      {/* Retry button on hover - only show for last message before result when there's no result */}
+                      {i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
+                        <button
+                          onClick={retryGeneration}
+                          className={`absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all`}
+                          title="Retry from here"
+                        >
+                          <RefreshCcw className="w-3.5 h-3.5" />
+                        </button>
                       )}
+                    </div>
+                    {/* User Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-end gap-2">
+                    {/* AI Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
+                      <div className="prose prose-sm max-w-none">
+                        <MarkdownRenderer content={msg.content} />
+                        {msg.questions && msg.questions.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {msg.questions.map((q, qi) => (
+                              <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                                <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
+                                {msg.questionReasons?.[qi] && (
+                                  <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1080,27 +1118,39 @@ export default function HomePage() {
             
             {/* Render messages AFTER the generated result */}
             {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
-              <div key={msg.id || `after-${i}`} className={`mb-2.5 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+              <div key={msg.id || `after-${i}`} className={`mb-2.5 flex ${msg.role === "user" ? "justify-end items-end gap-2" : ""}`}>
                 {msg.role === 'user' ? (
-                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
-                    <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
-                  </div>
+                  <>
+                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
+                      <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
+                    </div>
+                    {/* User Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
+                    </div>
+                  </>
                 ) : (
-                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
-                    <div className="prose prose-sm max-w-none">
-                      <MarkdownRenderer content={msg.content} />
-                      {msg.questions && msg.questions.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {msg.questions.map((q, qi) => (
-                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
-                              {msg.questionReasons?.[qi] && (
-                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                  <div className="flex items-end gap-2">
+                    {/* AI Avatar */}
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
+                      <div className="prose prose-sm max-w-none">
+                        <MarkdownRenderer content={msg.content} />
+                        {msg.questions && msg.questions.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            {msg.questions.map((q, qi) => (
+                              <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                                <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
+                                {msg.questionReasons?.[qi] && (
+                                  <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
