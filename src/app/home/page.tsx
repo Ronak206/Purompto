@@ -413,6 +413,10 @@ export default function HomePage() {
   };
 
   const generatePrompt = async (conversationHistory: ChatMessage[]) => {
+    // Create new abort controller for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
     setState("generating");
     setStreamingText("");
     
@@ -432,6 +436,7 @@ export default function HomePage() {
           conversation: conversationHistory.map(m => ({ role: m.role, content: m.content })),
           ...securityPayload.body
         }),
+        signal: controller.signal,
       });
       
       if (!response.ok) {
@@ -445,6 +450,9 @@ export default function HomePage() {
       
       if (reader) {
         while (true) {
+          // Check if aborted
+          if (controller.signal.aborted) break;
+          
           const { done, value } = await reader.read();
           if (done) break;
           
@@ -482,11 +490,18 @@ export default function HomePage() {
         }
       }
       
-    } catch (e) { 
+    } catch (e: any) { 
+      // Ignore abort errors (user switched chats)
+      if (e.name === 'AbortError') {
+        console.log("Request aborted - user switched chats");
+        return;
+      }
       setError(e instanceof Error ? e.message : "Error"); 
       setState("chatting"); 
+    } finally {
+      abortControllerRef.current = null;
     }
-  };
+  }; 
 
   const copy = async () => { 
     await navigator.clipboard.writeText(result || streamingText); 
