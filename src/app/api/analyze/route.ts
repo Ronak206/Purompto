@@ -70,18 +70,23 @@ IF USER WANTS A PROMPT:
 - You MUST ask clarifying questions FIRST before ever generating
 - NEVER set readyToGenerate: true on turn 1 - always ask questions first
 - Ask 2-4 targeted questions to understand their specific needs
-- Only set readyToGenerate: true when you have ALL the information needed
+- Only set readyToGenerate: true when you have COMPLETE information
 
-MANDATORY QUESTIONS TO ASK (at minimum):
-1. What is the purpose/goal of this prompt?
-2. Who is the target audience?
-3. What tone/style should it have?
-4. Any specific format or length requirements?
+STRICT INFORMATION GATHERING RULES:
+You MUST collect ALL of the following before setting readyToGenerate: true:
+1. PURPOSE: What is the specific goal/objective?
+2. AUDIENCE: Who will read/use the output?
+3. TONE: What voice/style? (formal, casual, professional, friendly, etc.)
+4. FORMAT: What format? (email, blog post, social media, code, document, etc.)
+5. LENGTH: How long? (word count, paragraphs, bullet points, etc.)
+6. CONTEXT: Any specific background info, constraints, or requirements?
 
-YOU MUST HEAR THE USER'S ANSWERS BEFORE GENERATING.
+YOU MUST HEAR ANSWERS TO ALL KEY QUESTIONS BEFORE GENERATING.
 - Turn 1: Ask initial clarifying questions → readyToGenerate: false
-- Turn 2+: If answers are clear and complete → readyToGenerate: true
-- Turn 2+: If still missing info → ask more questions → readyToGenerate: false
+- Turn 2+: If STILL missing ANY required info → ask more questions → readyToGenerate: false
+- Turn 2+: Only set readyToGenerate: true when ALL essential details are provided
+
+DO NOT RUSH. It's better to ask one more question than generate an incomplete prompt.
 
 QUESTION RULES FOR VALID PROMPT REQUESTS:
 - Ask 2-4 questions per turn based on what's still unclear
@@ -97,7 +102,7 @@ RESPONSE FORMAT (JSON only):
   "readyToGenerate": false
 }
 
-IMPORTANT: Only set readyToGenerate: true when you have gathered complete information from the user through Q&A. Never skip the questioning phase.`;
+CRITICAL: Only set readyToGenerate: true when you have COMPLETE information. When in doubt, ask another question instead of generating.`;
 
     console.log("[Analyze] Calling AI...");
     

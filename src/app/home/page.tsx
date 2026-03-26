@@ -1129,21 +1129,21 @@ export default function HomePage() {
         <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
-              <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
+              <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
                 <Textarea 
                   ref={inputRef}
                   placeholder="Describe what you want to create..." 
                   value={task} 
                   onChange={e => setTask(e.target.value)} 
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
-                  rows={Math.min(6, Math.max(1, Math.ceil(task.length / 50)))}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
+                  rows={1}
                 />
                 <Button 
                   onClick={startConversation} 
                   disabled={!task.trim() || working} 
                   size="icon"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-3 flex-shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -1152,22 +1152,22 @@ export default function HomePage() {
 
             {(state === "chatting" || state === "generating") && (
               <div>
-                <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
+                <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
                   <Textarea 
                     ref={inputRef}
                     placeholder="Type your answer..." 
                     value={input} 
                     onChange={e => setInput(e.target.value)} 
-                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
                     disabled={working}
-                    rows={Math.min(6, Math.max(1, Math.ceil(input.length / 50)))}
+                    rows={1}
                   />
                   <Button 
                     onClick={sendMessage} 
                     disabled={!input.trim() || working} 
                     size="icon"
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-3 flex-shrink-0"
                   >
                     <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -1180,22 +1180,22 @@ export default function HomePage() {
             )}
 
             {state === "generated" && (
-              <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
+              <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
                 <Textarea 
                   ref={inputRef}
                   placeholder="Add more details or ask for changes..." 
                   value={input} 
                   onChange={e => setInput(e.target.value)} 
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
                   disabled={working}
-                  rows={Math.min(6, Math.max(1, Math.ceil(input.length / 50)))}
+                  rows={1}
                 />
                 <Button 
                   onClick={addMessageAfterGeneration} 
                   disabled={!input.trim() || working} 
                   size="icon"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-3 flex-shrink-0"
                 >
                   <ArrowRight className="w-4 h-4" />
                 </Button>
