@@ -1033,7 +1033,7 @@ export default function HomePage() {
                     <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                    <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                       <div className="prose prose-sm max-w-none">
                         <MarkdownRenderer content={msg.content} />
                         {msg.questions && msg.questions.length > 0 && (
@@ -1062,7 +1062,7 @@ export default function HomePage() {
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                   <div className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span className="text-[15px] leading-[1.5]">Creating your prompt...</span>
@@ -1078,7 +1078,7 @@ export default function HomePage() {
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                   <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating your prompt...</div>
                   <div className="prose prose-sm max-w-none">
                     <MarkdownRenderer content={streamingText} />
@@ -1095,7 +1095,7 @@ export default function HomePage() {
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                   <div className="inline-flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span className="text-[15px] leading-[1.5]">Thinking...</span>
@@ -1128,7 +1128,7 @@ export default function HomePage() {
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.promptBg} border shadow-md`}>
+                <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.promptBg} border shadow-md`}>
                   <div className="flex justify-between items-center mb-2">
                     <div className={`flex items-center gap-2 ${theme.promptText}`}>
                       <CheckCircle className="w-4 h-4" />
@@ -1167,7 +1167,7 @@ export default function HomePage() {
                     <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                       <Sparkles className="w-3.5 h-3.5 text-white" />
                     </div>
-                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                    <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                       <div className="prose prose-sm max-w-none">
                         <MarkdownRenderer content={msg.content} />
                         {msg.questions && msg.questions.length > 0 && (
@@ -1211,8 +1211,8 @@ export default function HomePage() {
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
                   <Sparkles className="w-3.5 h-3.5 text-white" />
                 </div>
-                <div>
-                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.aiBubble}`}>
+                <div className="flex-1 max-w-full">
+                  <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                     <div className={`text-xs font-medium text-amber-400 mb-2`}>⚠️ Generation was interrupted</div>
                     <div className="whitespace-pre-wrap text-[15px] leading-[1.5] opacity-70">{streamingText}</div>
                   </div>
