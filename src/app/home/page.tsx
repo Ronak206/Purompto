@@ -74,6 +74,8 @@ export default function HomePage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Track which chat is currently generating (for concurrent support)
   const generatingChatIdRef = useRef<string | null>(null);
+  // AbortController for cancelling generation
+  const abortControllerRef = useRef<AbortController | null>(null);
   // Store conversation history per chat for retry functionality
   const [chatConversations, setChatConversations] = useState<Record<string, ChatMessage[]>>({});
   // Track failed generations per chat
@@ -172,9 +174,16 @@ export default function HomePage() {
   const loadChat = async (chatId: string) => {
     if (!apiToken || !user) return;
     
-    // If currently generating on another chat, mark it as interrupted
+    // If currently generating on another chat, abort it and mark as interrupted
     if (generatingChatIdRef.current && generatingChatIdRef.current !== chatId) {
       const interruptedChatId = generatingChatIdRef.current;
+      
+      // Abort the ongoing fetch request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      
       // Store the partial streaming text for this interrupted chat
       if (streamingText) {
         setChatPartialText(prev => ({
@@ -187,10 +196,10 @@ export default function HomePage() {
         }));
       }
       generatingChatIdRef.current = null;
+      setState("chatting");
     }
     
-    // Don't abort - allow concurrent chat operations
-    // Just load the new chat data
+    // Load the new chat data
     try {
       const securityPayload = await generateSecurityPayload(user.id);
       const res = await fetch(`/api/chat?chatId=${chatId}`, {
@@ -530,6 +539,9 @@ export default function HomePage() {
     const chatIdForGeneration = currentChatIdRef.current;
     generatingChatIdRef.current = chatIdForGeneration;
     
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    
     setState("generating");
     setStreamingText("");
     setError(null);
@@ -550,6 +562,7 @@ export default function HomePage() {
           conversation: conversationHistory.map(m => ({ role: m.role, content: m.content })),
           ...securityPayload.body
         }),
+        signal: abortControllerRef.current.signal,
       });
       
       if (!response.ok) {
@@ -627,6 +640,12 @@ export default function HomePage() {
       }
       
     } catch (e) { 
+      // Don't show error if request was aborted intentionally
+      if (e instanceof Error && e.name === 'AbortError') {
+        console.log('Generation aborted');
+        return;
+      }
+      
       const errorMessage = e instanceof Error ? e.message : "Failed to generate prompt";
       
       // Store the error for this specific chat
@@ -903,8 +922,33 @@ export default function HomePage() {
             
             {conversation.map((msg, i) => (
               <div key={msg.id || i} className={`mb-4 ${msg.role === "user" ? "flex justify-end" : ""}`}>
-                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${msg.role === "user" ? theme.userBubble : theme.aiBubble}`}>
-                  {msg.role === 'assistant' ? (
+                {msg.role === 'user' ? (
+                  <div className="group relative">
+                    <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.userBubble}`}>
+                      <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                    </div>
+                    {/* Retry button on hover - only show for last user message when there's no result */}
+                    {i === conversation.length - 1 && !result && state !== "generating" && !working && (
+                      <button
+                        onClick={() => {
+                          // Retry from this point - use conversation up to and including this message
+                          const conversationUpToThis = conversation.slice(0, i + 1);
+                          setConversation(conversationUpToThis);
+                          setChatConversations(prev => ({
+                            ...prev,
+                            [currentChatIdRef.current!]: conversationUpToThis
+                          }));
+                          generatePrompt(conversationUpToThis);
+                        }}
+                        className={`absolute -left-9 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all`}
+                        title="Retry from here"
+                      >
+                        <RefreshCcw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
                     <div className="prose prose-sm max-w-none">
                       <MarkdownRenderer content={msg.content} />
                       {msg.questions && msg.questions.length > 0 && (
@@ -920,10 +964,8 @@ export default function HomePage() {
                         </div>
                       )}
                     </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             ))}
             
