@@ -74,6 +74,10 @@ export default function HomePage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Track which chat is currently generating (for concurrent support)
   const generatingChatIdRef = useRef<string | null>(null);
+  // Store conversation history per chat for retry functionality
+  const [chatConversations, setChatConversations] = useState<Record<string, ChatMessage[]>>({});
+  // Track failed generations per chat
+  const [failedGenerations, setFailedGenerations] = useState<Record<string, string>>({});
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -181,16 +185,31 @@ export default function HomePage() {
         // Set the current chat ID
         currentChatIdRef.current = chat.chatId;
         
+        // Store conversation for this chat (for retry)
+        setChatConversations(prev => ({
+          ...prev,
+          [chat.chatId]: chat.messages || []
+        }));
+        
         // Load this chat's specific data
         setTask(chat.title || "");
         setConversation(chat.messages || []);
         setResult(chat.result || "");
         setSummary(chat.summary || "");
         setTips([]);
-        setError(null);
+        
+        // Check if this chat had a failed generation
+        const chatFailedError = failedGenerations[chat.chatId];
+        if (chatFailedError && !chat.result) {
+          setError(chatFailedError);
+          setState("chatting");
+        } else {
+          setError(null);
+          setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
+        }
+        
         // Don't reset streamingText - let other chat continue
         // Don't reset working - let other chat continue
-        setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
         setSidebarOpen(false);
       }
     } catch (e) {
@@ -341,7 +360,17 @@ export default function HomePage() {
         questionReasons: d.questionReasons
       };
       
-      setConversation(prev => [...prev, assistantMessage]);
+      const updatedConversation = [userMessage, assistantMessage];
+      setConversation(updatedConversation);
+      
+      // Store conversation for current chat (for retry)
+      if (currentChatIdRef.current) {
+        setChatConversations(prev => ({
+          ...prev,
+          [currentChatIdRef.current!]: updatedConversation
+        }));
+      }
+      
       await saveToChat({ message: assistantMessage });
       fetchChats();
       
@@ -384,11 +413,21 @@ export default function HomePage() {
         questionReasons: d.questionReasons
       };
       
-      setConversation(prev => [...prev, assistantMessage]);
+      const finalConversation = [...conversationSoFar, assistantMessage];
+      setConversation(finalConversation);
+      
+      // Store conversation for current chat (for retry)
+      if (currentChatIdRef.current) {
+        setChatConversations(prev => ({
+          ...prev,
+          [currentChatIdRef.current!]: finalConversation
+        }));
+      }
+      
       await saveToChat({ message: assistantMessage });
       
       if (d.readyToGenerate) {
-        generatePrompt([...conversationSoFar, assistantMessage]);
+        generatePrompt(finalConversation);
       }
       
     } catch (e) { 
@@ -453,6 +492,13 @@ export default function HomePage() {
                     setStreamingText(fullText);
                   }
                 } else if (data.type === 'complete') {
+                  // Clear any failed generation for this chat
+                  setFailedGenerations(prev => {
+                    const updated = { ...prev };
+                    delete updated[chatIdForGeneration];
+                    return updated;
+                  });
+                  
                   // Only update if still on same chat
                   if (generatingChatIdRef.current === chatIdForGeneration) {
                     setResult(data.prompt || fullText);
@@ -483,6 +529,13 @@ export default function HomePage() {
       
     } catch (e) { 
       const errorMessage = e instanceof Error ? e.message : "Failed to generate prompt";
+      
+      // Store the error for this specific chat
+      setFailedGenerations(prev => ({
+        ...prev,
+        [chatIdForGeneration]: errorMessage
+      }));
+      
       // Only show error if still on same chat
       if (generatingChatIdRef.current === chatIdForGeneration) {
         setError(errorMessage); 
@@ -492,11 +545,24 @@ export default function HomePage() {
     }
   };
   
-  // Retry function
+  // Retry function - uses stored conversation for current chat
   const retryGeneration = () => {
-    if (conversation.length > 0) {
+    const chatId = currentChatIdRef.current;
+    // Get stored conversation for this chat
+    const storedConversation = chatId ? chatConversations[chatId] : null;
+    const conversationToUse = storedConversation || conversation;
+    
+    if (conversationToUse.length > 0) {
       setError(null);
-      generatePrompt(conversation);
+      // Clear the failed generation for this chat
+      if (chatId) {
+        setFailedGenerations(prev => {
+          const updated = { ...prev };
+          delete updated[chatId];
+          return updated;
+        });
+      }
+      generatePrompt(conversationToUse);
     }
   }; 
 
@@ -808,6 +874,7 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Show error with retry button */}
             {error && (
               <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-2">
                 <span>{error}</span>
@@ -816,6 +883,20 @@ export default function HomePage() {
                   size="xs" 
                   variant="outline"
                   className="text-red-400 border-red-500/30 hover:bg-red-500/20 h-7"
+                >
+                  <RefreshCcw className="w-3 h-3 mr-1" /> Retry
+                </Button>
+              </div>
+            )}
+            
+            {/* Show retry option for chats that have conversation but no result and not currently generating */}
+            {!error && conversation.length > 0 && !result && state !== "generating" && !working && (
+              <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm flex items-center justify-between gap-2">
+                <span>Prompt generation incomplete. Would you like to retry?</span>
+                <Button 
+                  onClick={retryGeneration} 
+                  size="xs" 
+                  className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 h-7"
                 >
                   <RefreshCcw className="w-3 h-3 mr-1" /> Retry
                 </Button>

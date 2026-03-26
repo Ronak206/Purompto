@@ -90,7 +90,7 @@ export default function LandingPage() {
   return (
     <div className={`min-h-screen ${theme.bg} ${theme.text}`}>
       {/* Header */}
-      <header className={`fixed top-0 left-0 right-0 z-40 ${theme.bgHeader} backdrop-blur-sm border-b ${theme.borderLight}`}>
+      <header className={`fixed top-0 left-0 right-0 z-40 ${theme.bgHeader} backdrop-blur-sm`}>
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -141,7 +141,7 @@ export default function LandingPage() {
               { icon: Target, title: "Precision Prompts", desc: "Works the first time" },
               { icon: Clock, title: "Save Time", desc: "Generate in seconds" }
             ].map((f, i) => (
-              <div key={i} className={`p-5 rounded-xl ${theme.bgCard} border ${theme.border}`}>
+              <div key={i} className={`p-5 rounded-xl ${theme.bgCard}`}>
                 <f.icon className="w-6 h-6 text-emerald-400 mb-2" />
                 <h3 className="font-semibold mb-1 text-sm">{f.title}</h3>
                 <p className={`text-xs ${theme.textMuted2}`}>{f.desc}</p>
@@ -164,7 +164,7 @@ export default function LandingPage() {
               { step: "2", title: "Answer Questions", desc: "Our AI asks clarifying questions to understand your exact requirements" },
               { step: "3", title: "Get Perfect Prompt", desc: "Receive a professionally crafted prompt that works the first time" }
             ].map((item, i) => (
-              <div key={i} className={`p-5 rounded-xl ${theme.bgCard} border ${theme.border} text-center`}>
+              <div key={i} className={`p-5 rounded-xl ${theme.bgCard} text-center`}>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mx-auto mb-3">
                   <span className="font-bold text-white">{item.step}</span>
                 </div>
@@ -179,7 +179,7 @@ export default function LandingPage() {
       {/* CTA Section */}
       <section className="py-16 px-4">
         <div className="max-w-xl mx-auto text-center">
-          <div className={`p-8 rounded-2xl ${theme.bgCard} border ${theme.border}`}>
+          <div className={`p-8 rounded-2xl ${theme.bgCard}`}>
             <Lightbulb className="w-10 h-10 text-emerald-400 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Ready to Get Started?</h2>
             <p className={`${theme.textMuted} text-sm mb-4`}>
@@ -193,7 +193,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className={`py-6 px-4 border-t ${theme.borderLight} text-center`}>
+      <footer className={`py-6 px-4 text-center`}>
         <p className={`text-xs ${theme.textMuted2}`}>© 2026 Purompto. All rights reserved.</p>
       </footer>
 
