@@ -72,6 +72,7 @@ export default function HomePage() {
   const currentChatIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -161,6 +162,19 @@ export default function HomePage() {
 
   const loadChat = async (chatId: string) => {
     if (!apiToken || !user) return;
+    
+    // Cancel any ongoing requests for the previous chat
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    // Reset all states before loading new chat (isolate chats)
+    setWorking(false);
+    setError(null);
+    setStreamingText("");
+    setState("idle");
+    
     try {
       const securityPayload = await generateSecurityPayload(user.id);
       const res = await fetch(`/api/chat?chatId=${chatId}`, {
@@ -172,12 +186,19 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         const chat = data.chat;
+        
+        // Set the current chat ID
         currentChatIdRef.current = chat.chatId;
+        
+        // Load this chat's specific data
         setTask(chat.title || "");
         setConversation(chat.messages || []);
         setResult(chat.result || "");
         setSummary(chat.summary || "");
         setTips([]);
+        setError(null);
+        setStreamingText("");
+        setWorking(false);
         setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
         setSidebarOpen(false);
       }
@@ -266,10 +287,18 @@ export default function HomePage() {
   };
   
   const reset = async () => { 
+    // Cancel any ongoing requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     // If current chat has a generated result, mark it as completed before starting new
     if (currentChatIdRef.current && state === "generated") {
       await saveToChat({ status: "completed" });
     }
+    
+    // Reset all states
     setState("idle"); 
     setConversation([]); 
     setResult(""); 
@@ -279,6 +308,7 @@ export default function HomePage() {
     setSummary("");
     setTips([]);
     setStreamingText("");
+    setWorking(false);
     currentChatIdRef.current = null;
     setSidebarOpen(false);
   };
