@@ -72,7 +72,8 @@ export default function HomePage() {
   const currentChatIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Track which chat is currently generating (for concurrent support)
+  const generatingChatIdRef = useRef<string | null>(null);
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -163,18 +164,8 @@ export default function HomePage() {
   const loadChat = async (chatId: string) => {
     if (!apiToken || !user) return;
     
-    // Cancel any ongoing requests for the previous chat
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    
-    // Reset all states before loading new chat (isolate chats)
-    setWorking(false);
-    setError(null);
-    setStreamingText("");
-    setState("idle");
-    
+    // Don't abort - allow concurrent chat operations
+    // Just load the new chat data
     try {
       const securityPayload = await generateSecurityPayload(user.id);
       const res = await fetch(`/api/chat?chatId=${chatId}`, {
@@ -197,8 +188,8 @@ export default function HomePage() {
         setSummary(chat.summary || "");
         setTips([]);
         setError(null);
-        setStreamingText("");
-        setWorking(false);
+        // Don't reset streamingText - let other chat continue
+        // Don't reset working - let other chat continue
         setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
         setSidebarOpen(false);
       }
@@ -287,12 +278,6 @@ export default function HomePage() {
   };
   
   const reset = async () => { 
-    // Cancel any ongoing requests
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    
     // If current chat has a generated result, mark it as completed before starting new
     if (currentChatIdRef.current && state === "generated") {
       await saveToChat({ status: "completed" });
@@ -310,6 +295,7 @@ export default function HomePage() {
     setStreamingText("");
     setWorking(false);
     currentChatIdRef.current = null;
+    generatingChatIdRef.current = null;
     setSidebarOpen(false);
   };
 
@@ -412,13 +398,14 @@ export default function HomePage() {
     }
   };
 
-  const generatePrompt = async (conversationHistory: ChatMessage[]) => {
-    // Create new abort controller for this request
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+  const generatePrompt = async (conversationHistory: ChatMessage[], retryCount = 0) => {
+    // Track which chat is generating
+    const chatIdForGeneration = currentChatIdRef.current;
+    generatingChatIdRef.current = chatIdForGeneration;
     
     setState("generating");
     setStreamingText("");
+    setError(null);
     
     try {
       const securityPayload = await generateSecurityPayload(user!.id);
@@ -436,7 +423,6 @@ export default function HomePage() {
           conversation: conversationHistory.map(m => ({ role: m.role, content: m.content })),
           ...securityPayload.body
         }),
-        signal: controller.signal,
       });
       
       if (!response.ok) {
@@ -450,9 +436,6 @@ export default function HomePage() {
       
       if (reader) {
         while (true) {
-          // Check if aborted
-          if (controller.signal.aborted) break;
-          
           const { done, value } = await reader.read();
           if (done) break;
           
@@ -465,20 +448,28 @@ export default function HomePage() {
                 const data = JSON.parse(line.slice(6));
                 if (data.type === 'text') {
                   fullText += data.content;
-                  setStreamingText(fullText);
+                  // Only update if still on same chat
+                  if (generatingChatIdRef.current === chatIdForGeneration) {
+                    setStreamingText(fullText);
+                  }
                 } else if (data.type === 'complete') {
-                  setResult(data.prompt || fullText);
-                  setSummary(data.summary || "");
-                  setTips(data.tips || []);
-                  setUser(p => p ? { ...p, totalPromptsGenerated: (p.totalPromptsGenerated || 0) + 1 } : p);
-                  setState("generated");
+                  // Only update if still on same chat
+                  if (generatingChatIdRef.current === chatIdForGeneration) {
+                    setResult(data.prompt || fullText);
+                    setSummary(data.summary || "");
+                    setTips(data.tips || []);
+                    setUser(p => p ? { ...p, totalPromptsGenerated: (p.totalPromptsGenerated || 0) + 1 } : p);
+                    setState("generated");
+                  }
                   
+                  // Save to the correct chat
                   await saveToChat({ 
                     result: data.prompt || fullText,
                     summary: data.summary || "",
                     status: "generated"
                   });
                   fetchChats();
+                  generatingChatIdRef.current = null;
                 } else if (data.type === 'error') {
                   throw new Error(data.error);
                 }
@@ -490,16 +481,22 @@ export default function HomePage() {
         }
       }
       
-    } catch (e: any) { 
-      // Ignore abort errors (user switched chats)
-      if (e.name === 'AbortError') {
-        console.log("Request aborted - user switched chats");
-        return;
+    } catch (e) { 
+      const errorMessage = e instanceof Error ? e.message : "Failed to generate prompt";
+      // Only show error if still on same chat
+      if (generatingChatIdRef.current === chatIdForGeneration) {
+        setError(errorMessage); 
+        setState("chatting");
       }
-      setError(e instanceof Error ? e.message : "Error"); 
-      setState("chatting"); 
-    } finally {
-      abortControllerRef.current = null;
+      generatingChatIdRef.current = null;
+    }
+  };
+  
+  // Retry function
+  const retryGeneration = () => {
+    if (conversation.length > 0) {
+      setError(null);
+      generatePrompt(conversation);
     }
   }; 
 
@@ -811,7 +808,19 @@ export default function HomePage() {
               </div>
             )}
 
-            {error && <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>}
+            {error && (
+              <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-2">
+                <span>{error}</span>
+                <Button 
+                  onClick={retryGeneration} 
+                  size="xs" 
+                  variant="outline"
+                  className="text-red-400 border-red-500/30 hover:bg-red-500/20 h-7"
+                >
+                  <RefreshCcw className="w-3 h-3 mr-1" /> Retry
+                </Button>
+              </div>
+            )}
           </div>
         </main>
 
