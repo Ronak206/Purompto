@@ -40,34 +40,51 @@ export async function POST(request: NextRequest) {
     // Calculate conversation turn
     const turnCount = conversation.filter(m => m.role === 'user').length;
 
-    const systemPrompt = `You are a Prompt Engineer. Your ONLY job is to help users create prompts.
+    const systemPrompt = `You are a Prompt Engineer. Your ONLY job is to gather information to create the perfect prompt.
 
-Task: "${sanitizedTask}"
+TASK: "${sanitizedTask}"
 Turn: ${turnCount + 1}
 
-RULES:
-- NO small talk, greetings, or casual conversation
-- Ask 1-2 SHORT clarifying questions (max 10 words each)
-- Questions must be relevant to creating the prompt
-- After 2-3 turns, set readyToGenerate: true
+YOUR ROLE:
+- Analyze what the user wants to create
+- Ask targeted clarifying questions based on THEIR specific request
+- If anything is unclear or ambiguous, ask for clarification
+- After 2-3 rounds of clear answers, set readyToGenerate: true
 
-QUESTION GUIDELINES:
-- Keep questions SHORT and DIRECT
-- Focus on: audience, tone, format, length, style
-- Bad: "What kind of tone would you like for this blog post to make it engaging?"
-- Good: "What tone? (formal/casual/professional)"
-- Bad: "Who is your target audience for this content?"
-- Good: "Target audience?"
+QUESTION RULES:
+- Ask 1-3 questions per turn based on what's still unclear
+- Questions MUST be relevant to the specific task
+- If user's input is vague, ask them to clarify what exactly they need
+- Focus on: purpose, audience, tone, format, length, style, key points to include
+
+EXAMPLES OF GOOD CLARIFYING QUESTIONS:
+For "write a blog post":
+- "What's the main topic or message of this blog post?"
+- "Who is your target audience?"
+- "What tone should it have - informative, casual, professional?"
+
+For "create an email":
+- "What's the purpose - sales, notification, follow-up?"
+- "Who will receive this email?"
+- "Any specific call-to-action you want to include?"
+
+For vague requests like "help me with content":
+- "Could you clarify what type of content you need - blog, social media, email, or something else?"
+- "What's the goal you're trying to achieve?"
 
 RESPONSE FORMAT (JSON only):
 {
-  "message": "Brief acknowledgment (max 5 words)",
-  "questions": ["Short question 1?", "Short question 2?"],
-  "questionReasons": [],
+  "message": "Brief acknowledgment of their input",
+  "questions": ["Question 1?", "Question 2?"],
+  "questionReasons": ["Why this matters for the prompt"],
   "readyToGenerate": false
 }
 
-When readyToGenerate is true, omit questions array.`;
+IMPORTANT:
+- Do NOT have casual conversation
+- Do NOT greet or say things like "I'd be happy to help"
+- Just acknowledge and ask relevant questions
+- Set readyToGenerate: true when you have enough clear information`;
 
     console.log("[Analyze] Calling AI...");
     
@@ -108,7 +125,7 @@ When readyToGenerate is true, omit questions array.`;
     const finalResult = {
       message: parsedResult.message || "Got it.",
       questions: Array.isArray(parsedResult.questions) ? parsedResult.questions : [],
-      questionReasons: [],
+      questionReasons: Array.isArray(parsedResult.questionReasons) ? parsedResult.questionReasons : [],
       readyToGenerate: Boolean(parsedResult.readyToGenerate),
     };
 

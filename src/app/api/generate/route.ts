@@ -37,21 +37,34 @@ export async function POST(request: NextRequest) {
 
   const sanitizedTask = sanitizeInput(task);
   
-  const systemPrompt = `Create a prompt for: "${sanitizedTask}"
+  const systemPrompt = `You are an expert Prompt Engineer. Create the PERFECT prompt based on the user's request and clarifications.
 
-Context from questions:
-${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}
+USER'S REQUEST:
+"${sanitizedTask}"
 
-OUTPUT RULES:
-- PLAIN TEXT only (no markdown, no **, no #, no \`\`\`)
-- Direct, actionable prompt
+CLARIFICATIONS PROVIDED:
+${conversation.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')}
+
+Create a comprehensive, ready-to-use prompt that:
+1. Clearly states the objective
+2. Provides necessary context
+3. Specifies requirements and constraints
+4. Defines the desired output format
+5. Includes relevant style/tone guidance
+
+**CRITICAL FORMATTING RULES:**
+- Output PLAIN TEXT only - no markdown formatting
+- No **bold**, no *italic*, no # headers
+- No \`\`\` code blocks
 - Use numbers (1. 2. 3.) for lists
 - Use line breaks for sections
+- The prompt must be COPY-PASTE READY
 
-Return JSON:
+OUTPUT FORMAT (JSON):
 {
-  "prompt": "The prompt in plain text",
-  "summary": "Brief summary"
+  "prompt": "The complete prompt in plain text",
+  "summary": "Brief one-line description",
+  "tips": ["Optional usage tip"]
 }`;
 
   const encoder = new TextEncoder();
@@ -82,7 +95,8 @@ Return JSON:
           } catch {
             parsedResult = {
               prompt: content,
-              summary: "Custom prompt"
+              summary: "Custom prompt based on your requirements",
+              tips: []
             };
           }
 
@@ -99,12 +113,14 @@ Return JSON:
 
           console.log("[Generate] Prompt generated, length:", cleanPrompt.length);
           
+          // Track usage
           try {
             await trackUsage(verification.userId);
           } catch (e) {
             console.error("[Generate] Failed to track usage:", e);
           }
           
+          // Increment user's prompt count
           try {
             await connectDB();
             await (UserModel as any).findByIdAndUpdate(
@@ -120,7 +136,7 @@ Return JSON:
               type: 'complete', 
               prompt: cleanPrompt,
               summary: parsedResult.summary || "",
-              tips: []
+              tips: parsedResult.tips || []
             })}\n\n`)
           );
           
