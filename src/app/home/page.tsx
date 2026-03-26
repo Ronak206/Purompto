@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Sparkles, Copy, Check, Send, RefreshCcw, Loader2, CheckCircle, 
@@ -91,6 +90,27 @@ export default function HomePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [loadingChats, setLoadingChats] = useState(false);
+  
+  // Optimized input handlers to prevent INP blocking
+  const handleTaskChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
+    requestAnimationFrame(() => setTask(value));
+  }, []);
+  
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
+    requestAnimationFrame(() => setInput(value));
+  }, []);
+  
+  // Auto-resize textarea
+  const adjustTextareaHeight = useCallback((textarea: HTMLTextAreaElement | null) => {
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    const newHeight = Math.min(textarea.scrollHeight, 200);
+    textarea.style.height = newHeight + 'px';
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
@@ -1130,14 +1150,16 @@ export default function HomePage() {
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
               <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                <Textarea 
-                  ref={inputRef}
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                    adjustTextareaHeight(el);
+                  }}
                   placeholder="Describe what you want to create..." 
                   value={task} 
-                  onChange={e => setTask(e.target.value)} 
+                  onChange={handleTaskChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
-                  rows={1}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={startConversation} 
@@ -1153,15 +1175,17 @@ export default function HomePage() {
             {(state === "chatting" || state === "generating") && (
               <div>
                 <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                  <Textarea 
-                    ref={inputRef}
+                  <textarea 
+                    ref={(el) => { 
+                      (inputRef as any).current = el;
+                      adjustTextareaHeight(el);
+                    }}
                     placeholder="Type your answer..." 
                     value={input} 
-                    onChange={e => setInput(e.target.value)} 
-                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
+                    onChange={handleInputChange}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
                     disabled={working}
-                    rows={1}
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                   />
                   <Button 
                     onClick={sendMessage} 
@@ -1181,15 +1205,17 @@ export default function HomePage() {
 
             {state === "generated" && (
               <div className={`relative flex items-center ${theme.bgInput} rounded-[18px] overflow-hidden`}>
-                <Textarea 
-                  ref={inputRef}
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                    adjustTextareaHeight(el);
+                  }}
                   placeholder="Add more details or ask for changes..." 
                   value={input} 
-                  onChange={e => setInput(e.target.value)} 
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto`} 
+                  onChange={handleInputChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
                   disabled={working}
-                  rows={1}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3.5 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={addMessageAfterGeneration} 
