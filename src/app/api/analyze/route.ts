@@ -10,7 +10,7 @@ interface ReasoningMessage {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("[Analyze] Starting conversation...");
+    console.log("[Analyze] Starting...");
     
     const verification = verifyApiRequest(request);
     
@@ -40,54 +40,36 @@ export async function POST(request: NextRequest) {
     // Calculate conversation turn
     const turnCount = conversation.filter(m => m.role === 'user').length;
 
-    const systemPrompt = `You are a friendly, conversational AI assistant helping users create the perfect prompt. 
+    const systemPrompt = `You are a Prompt Engineer. Your ONLY job is to help users create prompts.
 
-IMPORTANT: You are NOT just asking questions - you are having a NATURAL CONVERSATION to understand what the user needs.
+Task: "${sanitizedTask}"
+Turn: ${turnCount + 1}
 
-Your personality:
-- Warm, friendly, and engaging
-- Curious and genuinely interested in helping
-- Explain WHY you're asking something when relevant
-- Feel free to share relevant insights or suggestions
-- Make the user feel like they're chatting with a helpful expert
+RULES:
+- NO small talk, greetings, or casual conversation
+- Ask 1-2 SHORT clarifying questions (max 10 words each)
+- Questions must be relevant to creating the prompt
+- After 2-3 turns, set readyToGenerate: true
 
-Current task: "${sanitizedTask}"
-Conversation turn: ${turnCount + 1}
+QUESTION GUIDELINES:
+- Keep questions SHORT and DIRECT
+- Focus on: audience, tone, format, length, style
+- Bad: "What kind of tone would you like for this blog post to make it engaging?"
+- Good: "What tone? (formal/casual/professional)"
+- Bad: "Who is your target audience for this content?"
+- Good: "Target audience?"
 
-${conversation.length > 0 ? 'Continue the conversation naturally based on the previous context.' : 'Start by greeting the user and acknowledging their task.'}
-
-Your goal is to understand:
-- What exactly they want to achieve
-- Who the audience is
-- What tone/style they prefer
-- Any specific requirements or constraints
-- Format and length preferences
-
-GUIDELINES:
-1. Be conversational - use natural language, not robotic questions
-2. Ask 1-2 questions at a time maximum
-3. Explain WHY you're asking when it helps context
-4. Share quick tips or suggestions when relevant
-5. After 4-6 exchanges, set readyToGenerate to true
-
-**MARKDOWN FORMATTING for your message:**
-- Use **bold** for emphasis
-- Use ### for small headers
-- Use - for bullet lists
-- Use > for tips/quotes
-- Add emojis where appropriate 🚀 💡 ✨
-
-RESPONSE FORMAT - Return valid JSON:
+RESPONSE FORMAT (JSON only):
 {
-  "message": "Your conversational message with **markdown** formatting",
-  "questions": ["question1"],
-  "questionReasons": ["why I'm asking this"],
+  "message": "Brief acknowledgment (max 5 words)",
+  "questions": ["Short question 1?", "Short question 2?"],
+  "questionReasons": [],
   "readyToGenerate": false
 }
 
-IMPORTANT: Set "readyToGenerate" to true after 4-6 conversation turns when you have enough information.`;
+When readyToGenerate is true, omit questions array.`;
 
-    console.log("[Analyze] Calling AI with reasoning...");
+    console.log("[Analyze] Calling AI...");
     
     const conversationWithContext: ReasoningMessage[] = [
       { role: 'user', content: systemPrompt }
@@ -96,7 +78,7 @@ IMPORTANT: Set "readyToGenerate" to true after 4-6 conversation turns when you h
     if (conversation.length > 0) {
       conversationWithContext.push(...conversation);
     } else {
-      conversationWithContext.push({ role: 'user', content: `I want to: ${sanitizedTask}` });
+      conversationWithContext.push({ role: 'user', content: `I need a prompt for: ${sanitizedTask}` });
     }
     
     const result = await chatWithReasoning(
@@ -124,11 +106,10 @@ IMPORTANT: Set "readyToGenerate" to true after 4-6 conversation turns when you h
     }
 
     const finalResult = {
-      message: parsedResult.message || result.content,
+      message: parsedResult.message || "Got it.",
       questions: Array.isArray(parsedResult.questions) ? parsedResult.questions : [],
-      questionReasons: Array.isArray(parsedResult.questionReasons) ? parsedResult.questionReasons : [],
+      questionReasons: [],
       readyToGenerate: Boolean(parsedResult.readyToGenerate),
-      reasoning_details: result.reasoning_details,
     };
 
     console.log("[Analyze] Ready to generate:", finalResult.readyToGenerate);

@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Sparkles, Copy, Check, Send, RefreshCcw, Loader2, CheckCircle, 
-  LogOut, ArrowRight, Lightbulb, Moon, Sun, MessageSquare, Trash2
+  Sparkles, Copy, Check, Send, Loader2, CheckCircle, 
+  LogOut, ArrowRight, Moon, Sun, MessageSquare, Trash2, Wand2
 } from "lucide-react";
 import { generateSecurityPayload } from "@/lib/client-secure";
-import ReactMarkdown from "react-markdown";
 
 interface AuthUser { id: string; email: string; name: string | null; isActive: boolean; totalPromptsGenerated: number; }
 
@@ -17,7 +16,6 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   questions?: string[];
-  questionReasons?: string[];
   createdAt?: string;
 }
 
@@ -29,26 +27,11 @@ interface ChatItem {
 }
 
 const SUGGESTIONS = [
-  "Write a blog post about AI",
-  "Create a marketing email",
-  "Generate social media content",
-  "Write a product description"
+  "Blog post about AI",
+  "Marketing email",
+  "Product description",
+  "Social media content"
 ];
-
-function MarkdownRenderer({ content }: { content: string }) {
-  return (
-    <ReactMarkdown
-      components={{
-        p: ({ children }) => <p className="mb-2 leading-relaxed text-sm">{children}</p>,
-        strong: ({ children }) => <strong className="font-semibold text-emerald-400">{children}</strong>,
-        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 text-sm">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-sm">{children}</ol>,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-}
 
 export default function HomePage() {
   const [isDark, setIsDark] = useState(true);
@@ -56,14 +39,13 @@ export default function HomePage() {
   const [apiToken, setApiToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Chat state
-  const [state, setState] = useState<"idle" | "chatting" | "generating" | "generated">("idle");
+  // State
+  const [state, setState] = useState<"idle" | "asking" | "generating" | "generated">("idle");
   const [task, setTask] = useState("");
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [conversation, setConversation] = useState<ChatMessage[]>([]);
-  const [summary, setSummary] = useState("");
-  const [tips, setTips] = useState<string[]>([]);
+  const [currentQuestions, setCurrentQuestions] = useState<string[]>([]);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -107,9 +89,8 @@ export default function HomePage() {
 
   useEffect(() => { 
     scrollRef.current?.scrollIntoView({ behavior: "smooth" }); 
-  }, [conversation, streamingText]);
+  }, [conversation, streamingText, currentQuestions]);
 
-  // Close sidebar on escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSidebarOpen(false);
@@ -176,9 +157,8 @@ export default function HomePage() {
         setTask(chat.title || "");
         setConversation(chat.messages || []);
         setResult(chat.result || "");
-        setSummary(chat.summary || "");
-        setTips([]);
-        setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
+        setCurrentQuestions([]);
+        setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "asking" : "idle"));
         setSidebarOpen(false);
       }
     } catch (e) {
@@ -209,7 +189,6 @@ export default function HomePage() {
           role: data.message.role,
           content: data.message.content,
           questions: data.message.questions,
-          questionReasons: data.message.questionReasons,
         };
       }
       
@@ -266,7 +245,6 @@ export default function HomePage() {
   };
   
   const reset = async () => { 
-    // If current chat has a generated result, mark it as completed before starting new
     if (currentChatIdRef.current && state === "generated") {
       await saveToChat({ status: "completed" });
     }
@@ -276,28 +254,26 @@ export default function HomePage() {
     setTask(""); 
     setInput(""); 
     setError(null);
-    setSummary("");
-    setTips([]);
+    setCurrentQuestions([]);
     setStreamingText("");
     currentChatIdRef.current = null;
     setSidebarOpen(false);
   };
 
-  const continueChatting = async () => {
-    // Mark as "remaining" since user wants to continue refining
+  const continueRefining = async () => {
     await saveToChat({ status: "remaining" });
-    setState("chatting");
+    setState("asking");
     setResult("");
-    setTips([]);
+    setCurrentQuestions([]);
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
-  const startConversation = async () => {
+  const startGeneration = async () => {
     if (!task.trim()) return;
     
     setWorking(true);
     setError(null);
-    setState("chatting");
+    setState("asking");
     
     const userMessage: ChatMessage = { 
       id: Date.now().toString(),
@@ -321,13 +297,17 @@ export default function HomePage() {
         id: Date.now().toString(),
         role: 'assistant', 
         content: d.message,
-        questions: d.questions,
-        questionReasons: d.questionReasons
+        questions: d.questions
       };
       
       setConversation(prev => [...prev, assistantMessage]);
+      setCurrentQuestions(d.questions || []);
       await saveToChat({ message: assistantMessage });
       fetchChats();
+      
+      if (d.readyToGenerate) {
+        generatePrompt([...conversation, userMessage, assistantMessage]);
+      }
       
     } catch (e) { 
       setError(e instanceof Error ? e.message : "Error"); 
@@ -337,7 +317,7 @@ export default function HomePage() {
     }
   };
 
-  const sendMessage = async () => {
+  const answerQuestion = async () => {
     if (!input.trim() || working) return;
     
     setWorking(true);
@@ -350,6 +330,7 @@ export default function HomePage() {
     };
     setConversation(prev => [...prev, userMessage]);
     setInput("");
+    setCurrentQuestions([]);
     
     await saveToChat({ message: userMessage });
     
@@ -364,8 +345,7 @@ export default function HomePage() {
         id: Date.now().toString(),
         role: 'assistant', 
         content: d.message,
-        questions: d.questions,
-        questionReasons: d.questionReasons
+        questions: d.questions
       };
       
       setConversation(prev => [...prev, assistantMessage]);
@@ -373,6 +353,8 @@ export default function HomePage() {
       
       if (d.readyToGenerate) {
         generatePrompt([...conversationSoFar, assistantMessage]);
+      } else {
+        setCurrentQuestions(d.questions || []);
       }
       
     } catch (e) { 
@@ -385,6 +367,7 @@ export default function HomePage() {
   const generatePrompt = async (conversationHistory: ChatMessage[]) => {
     setState("generating");
     setStreamingText("");
+    setCurrentQuestions([]);
     
     try {
       const securityPayload = await generateSecurityPayload(user!.id);
@@ -430,14 +413,11 @@ export default function HomePage() {
                   setStreamingText(fullText);
                 } else if (data.type === 'complete') {
                   setResult(data.prompt || fullText);
-                  setSummary(data.summary || "");
-                  setTips(data.tips || []);
                   setUser(p => p ? { ...p, totalPromptsGenerated: (p.totalPromptsGenerated || 0) + 1 } : p);
                   setState("generated");
                   
                   await saveToChat({ 
                     result: data.prompt || fullText,
-                    summary: data.summary || "",
                     status: "generated"
                   });
                   fetchChats();
@@ -454,7 +434,7 @@ export default function HomePage() {
       
     } catch (e) { 
       setError(e instanceof Error ? e.message : "Error"); 
-      setState("chatting"); 
+      setState("asking"); 
     }
   };
 
@@ -505,16 +485,11 @@ export default function HomePage() {
     textMuted2: isDark ? "text-zinc-500" : "text-gray-400",
     border: isDark ? "border-zinc-800" : "border-gray-200",
     bgCard: isDark ? "bg-zinc-900" : "bg-white",
-    bgInput: isDark ? "bg-zinc-800" : "bg-white",
+    bgInput: isDark ? "bg-zinc-800/50" : "bg-white",
     sidebarBg: isDark ? "bg-zinc-900" : "bg-white",
     promptBg: isDark ? "bg-emerald-950/50 border-emerald-900" : "bg-emerald-50 border-emerald-200",
     promptText: isDark ? "text-emerald-400" : "text-emerald-600",
-    userBubble: isDark ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white",
-    aiBubble: isDark ? "bg-zinc-800 text-white" : "bg-gray-100 text-gray-900",
-    tipBg: isDark ? "bg-amber-950/30 border-amber-900" : "bg-amber-50 border-amber-200",
-    tipText: isDark ? "text-amber-400" : "text-amber-600",
-    historyItem: isDark ? "hover:bg-zinc-800" : "hover:bg-gray-100",
-    historyItemActive: isDark ? "bg-zinc-800" : "bg-gray-100",
+    accent: "bg-gradient-to-r from-emerald-500 to-teal-500",
   };
 
   if (loading) {
@@ -550,9 +525,9 @@ export default function HomePage() {
           <Button 
             onClick={reset} 
             size="sm"
-            className="flex-1 justify-start bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 text-xs"
+            className={`flex-1 justify-start ${theme.accent} hover:opacity-90 text-white h-8 text-xs`}
           >
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" /> New Chat
+            <Wand2 className="w-3.5 h-3.5 mr-1.5" /> New Prompt
           </Button>
           <button 
             onClick={() => setSidebarOpen(false)}
@@ -574,7 +549,7 @@ export default function HomePage() {
           ) : chats.length === 0 ? (
             <div className={`text-center py-8 px-3 ${theme.textMuted2}`}>
               <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-50" />
-              <p className="text-xs">No conversations</p>
+              <p className="text-xs">No prompts yet</p>
             </div>
           ) : (
             <div className="p-1.5">
@@ -586,7 +561,7 @@ export default function HomePage() {
                       <button
                         key={chat.id}
                         onClick={() => loadChat(chat.id)}
-                        className={`w-full text-left px-2 py-1.5 rounded-md ${currentChatIdRef.current === chat.id ? theme.historyItemActive : theme.historyItem} transition-colors group`}
+                        className={`w-full text-left px-2 py-1.5 rounded-md ${currentChatIdRef.current === chat.id ? "bg-zinc-800" : theme.textMuted} transition-colors group`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <div className="flex-1 min-w-0">
@@ -609,10 +584,10 @@ export default function HomePage() {
           )}
         </ScrollArea>
 
-        {/* Sidebar Footer - User Profile & Logout */}
+        {/* Sidebar Footer */}
         <div className={`p-2 border-t ${theme.border} flex-shrink-0`}>
           <div className={`flex items-center gap-2 px-2 py-2 rounded-lg ${theme.bgCard}`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+            <div className={`w-8 h-8 rounded-full ${theme.accent} flex items-center justify-center`}>
               <span className="text-white text-xs font-semibold">{(user.name || user.email)[0].toUpperCase()}</span>
             </div>
             <div className="flex-1 min-w-0">
@@ -632,7 +607,6 @@ export default function HomePage() {
         {/* Header */}
         <header className="h-12 flex-shrink-0 px-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {/* ChatGPT style sidebar toggle - same button to open/close */}
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)} 
               className={`p-1.5 rounded-lg hover:bg-white/10 ${theme.textMuted} transition-colors`}
@@ -646,7 +620,7 @@ export default function HomePage() {
               </svg>
             </button>
             <div className="flex items-center gap-2 ml-1">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+              <div className={`w-7 h-7 rounded-lg ${theme.accent} flex items-center justify-center`}>
                 <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
               <span className="font-semibold text-sm">Purompto</span>
@@ -657,24 +631,27 @@ export default function HomePage() {
           </button>
         </header>
 
-        {/* Chat Area */}
+        {/* Main Area */}
         <main className="flex-1 overflow-y-auto">
           <div className="w-full max-w-2xl mx-auto px-4 py-6">
-            {conversation.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-4">
-                  <Sparkles className="w-6 h-6 text-white" />
+            
+            {/* Initial State */}
+            {state === "idle" && (
+              <div className="flex flex-col items-center justify-center py-20">
+                <div className={`w-16 h-16 rounded-2xl ${theme.accent} flex items-center justify-center mb-6`}>
+                  <Wand2 className="w-8 h-8 text-white" />
                 </div>
-                <h1 className="text-lg font-semibold mb-1">How can I help you today?</h1>
-                <p className={`${theme.textMuted} text-sm mb-6`}>Tell me what you want to create</p>
+                <h1 className="text-2xl font-bold mb-2">Generate Your Prompt</h1>
+                <p className={`${theme.textMuted} text-sm mb-8 text-center max-w-md`}>
+                  Describe what you need and I'll create the perfect prompt for you
+                </p>
                 
-                {/* Suggestions */}
-                <div className="flex flex-wrap gap-2 justify-center max-w-md">
+                <div className="flex flex-wrap gap-2 justify-center max-w-md mb-8">
                   {SUGGESTIONS.map((suggestion, i) => (
                     <button
                       key={i}
                       onClick={() => setTask(suggestion)}
-                      className={`px-3 py-1.5 text-xs rounded-full ${theme.bgCard} border ${theme.border} ${theme.textMuted} hover:${theme.text} transition-colors`}
+                      className={`px-3 py-1.5 text-xs rounded-full ${theme.bgCard} border ${theme.border} ${theme.textMuted} hover:border-emerald-500/50 transition-colors`}
                     >
                       {suggestion}
                     </button>
@@ -682,164 +659,144 @@ export default function HomePage() {
                 </div>
               </div>
             )}
-            
-            {conversation.map((msg, i) => (
-              <div key={msg.id || i} className={`mb-4 ${msg.role === "user" ? "flex justify-end" : ""}`}>
-                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${msg.role === "user" ? theme.userBubble : theme.aiBubble}`}>
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm max-w-none">
-                      <MarkdownRenderer content={msg.content} />
-                      {msg.questions && msg.questions.length > 0 && (
-                        <div className="mt-3 space-y-2">
-                          {msg.questions.map((q, qi) => (
-                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                              <div className="font-medium text-sm">💡 {q}</div>
-                              {msg.questionReasons?.[qi] && (
-                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
-                  )}
-                </div>
+
+            {/* Task Display */}
+            {state !== "idle" && (
+              <div className="mb-6">
+                <div className={`text-xs ${theme.textMuted2} mb-1`}>Creating prompt for:</div>
+                <div className="text-lg font-medium">{task}</div>
               </div>
-            ))}
-            
-            {state === "generating" && !streamingText && (
-              <div className="mb-4">
-                <div className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
-                  <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-                  <span className="text-sm">Creating your prompt...</span>
+            )}
+
+            {/* Questions Section */}
+            {state === "asking" && currentQuestions.length > 0 && !working && (
+              <div className={`mb-6 p-4 rounded-xl ${theme.bgCard} border ${theme.border}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className={`w-4 h-4 ${theme.promptText}`} />
+                  <span className="text-sm font-medium">Quick questions</span>
+                </div>
+                <div className="space-y-2">
+                  {currentQuestions.map((q, i) => (
+                    <div key={i} className={`text-sm ${theme.textMuted}`}>
+                      • {q}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {state === "generating" && streamingText && (
-              <div className="mb-4">
-                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
-                  <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating...</div>
-                  <div className="whitespace-pre-wrap text-sm">{streamingText}<span className="inline-block w-1 h-4 bg-emerald-400 animate-pulse ml-0.5" /></div>
-                </div>
-              </div>
-            )}
-            
+            {/* Loading State */}
             {working && state !== "generating" && (
-              <div className="mb-4">
-                <div className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
-                  <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-                  <span className="text-sm">Thinking...</span>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-emerald-500 mb-4">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Analyzing...</span>
               </div>
             )}
-            
-            <div ref={scrollRef} />
+
+            {/* Generating State */}
+            {state === "generating" && (
+              <div className={`mb-6 p-4 rounded-xl ${theme.promptBg} border`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className={`w-4 h-4 ${theme.promptText} animate-pulse`} />
+                  <span className={`text-sm font-medium ${theme.promptText}`}>Generating your prompt...</span>
+                </div>
+                {streamingText && (
+                  <div className={`text-sm leading-relaxed p-3 rounded-lg ${isDark ? 'bg-black/30' : 'bg-white'} whitespace-pre-wrap`}>
+                    {streamingText}<span className="inline-block w-1 h-4 bg-emerald-400 animate-pulse ml-0.5" />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Generated Result */}
             {state === "generated" && result && (
-              <div className={`mt-4 p-4 rounded-2xl ${theme.promptBg} border`}>
+              <div className={`p-4 rounded-xl ${theme.promptBg} border`}>
                 <div className="flex justify-between items-center mb-3">
                   <div className={`flex items-center gap-2 ${theme.promptText}`}>
                     <CheckCircle className="w-4 h-4" />
-                    <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
+                    <span className="font-medium text-sm">Your Prompt</span>
                   </div>
                   <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-emerald-500/20 h-7`}>
                     {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
                   </Button>
                 </div>
-                <div className={`text-sm leading-relaxed max-h-52 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white'} whitespace-pre-wrap`}>
+                <div className={`text-sm leading-relaxed max-h-64 overflow-y-auto p-3 rounded-lg ${isDark ? 'bg-black/30' : 'bg-white'} whitespace-pre-wrap`}>
                   {result}
                 </div>
-                {tips && tips.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {tips.map((tip, i) => (
-                      <div key={i} className={`text-xs p-2.5 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
-                        💡 {tip}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
             {error && <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>}
+            
+            <div ref={scrollRef} />
           </div>
         </main>
 
-        {/* Bottom Input - z.ai style */}
+        {/* Bottom Input */}
         <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
               <div className={`relative flex items-end ${theme.bgInput} rounded-2xl border ${isDark ? 'border-zinc-700' : 'border-gray-300'} focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50`}>
                 <Textarea 
                   ref={inputRef}
-                  placeholder="Describe what you want to create..." 
+                  placeholder="What do you need a prompt for?" 
                   value={task} 
                   onChange={e => setTask(e.target.value)} 
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startGeneration(); }}}
+                  className="flex-1 min-h-[52px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none" 
                   rows={1}
                 />
                 <Button 
-                  onClick={startConversation} 
+                  onClick={startGeneration} 
                   disabled={!task.trim() || working} 
                   size="icon"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                  className={`${theme.accent} w-10 h-10 rounded-xl mr-2 mb-2 flex-shrink-0`}
                 >
-                  <Send className="w-4 h-4" />
+                  <Wand2 className="w-4 h-4" />
                 </Button>
               </div>
             )}
 
-            {(state === "chatting" || state === "generating") && (
-              <div>
-                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl border ${isDark ? 'border-zinc-700' : 'border-gray-300'} focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50`}>
-                  <Textarea 
-                    ref={inputRef}
-                    placeholder="Type your answer..." 
-                    value={input} 
-                    onChange={e => setInput(e.target.value)} 
-                    className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
-                    disabled={working}
-                    rows={1}
-                  />
-                  <Button 
-                    onClick={sendMessage} 
-                    disabled={!input.trim() || working} 
-                    size="icon"
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className={`mt-2 flex items-center gap-1.5 text-xs ${theme.textMuted} px-1`}>
-                  <Lightbulb className="w-3 h-3 text-emerald-500" />
-                  <span>Answer with detail for a better prompt</span>
-                </div>
+            {(state === "asking") && (
+              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl border ${isDark ? 'border-zinc-700' : 'border-gray-300'} focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50`}>
+                <Textarea 
+                  ref={inputRef}
+                  placeholder="Answer the questions..." 
+                  value={input} 
+                  onChange={e => setInput(e.target.value)} 
+                  className="flex-1 min-h-[52px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none" 
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); answerQuestion(); }}} 
+                  disabled={working}
+                  rows={1}
+                />
+                <Button 
+                  onClick={answerQuestion} 
+                  disabled={!input.trim() || working} 
+                  size="icon"
+                  className={`${theme.accent} w-10 h-10 rounded-xl mr-2 mb-2 flex-shrink-0`}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
 
             {state === "generated" && (
               <div className="flex justify-center gap-2">
                 <Button 
-                  onClick={continueChatting}
+                  onClick={continueRefining}
                   variant="outline"
                   size="sm"
                   className="h-9 px-4"
                 >
-                  <ArrowRight className="w-3.5 h-3.5 mr-1.5" /> Continue
+                  <ArrowRight className="w-3.5 h-3.5 mr-1.5" /> Refine
                 </Button>
                 <Button 
                   onClick={reset} 
                   size="sm"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-9 px-4"
+                  className={`${theme.accent} h-9 px-4`}
                 >
-                  <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> New Chat
+                  <Wand2 className="w-3.5 h-3.5 mr-1.5" /> New Prompt
                 </Button>
               </div>
             )}

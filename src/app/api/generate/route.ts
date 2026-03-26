@@ -37,47 +37,27 @@ export async function POST(request: NextRequest) {
 
   const sanitizedTask = sanitizeInput(task);
   
-  const systemPrompt = `You are an expert prompt engineer. Based on the conversation below, create the PERFECT prompt.
+  const systemPrompt = `Create a prompt for: "${sanitizedTask}"
 
-USER'S ORIGINAL REQUEST:
-"${sanitizedTask}"
+Context from questions:
+${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}
 
-CONVERSATION CONTEXT:
-${conversation.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')}
+OUTPUT RULES:
+- PLAIN TEXT only (no markdown, no **, no #, no \`\`\`)
+- Direct, actionable prompt
+- Use numbers (1. 2. 3.) for lists
+- Use line breaks for sections
 
-Create a comprehensive, well-structured prompt that incorporates ALL the details discussed.
-
-**CRITICAL: The prompt must be PLAIN TEXT ready to copy and use directly.**
-- NO markdown formatting (no **, no #, no \`\`\`)
-- NO special characters like * or _ for emphasis
-- NO headers with #
-- Just clean, readable plain text
-- Use line breaks for structure
-- Use numbers (1., 2., 3.) for lists
-- Use plain language for sections
-
-PROMPT STRUCTURE:
-- Start with a clear objective statement
-- Provide context and background
-- List requirements (use 1., 2., 3.)
-- Describe style and tone
-- Specify format needed
-- Add any additional notes
-
-OUTPUT FORMAT - Return valid JSON:
+Return JSON:
 {
-  "prompt": "The complete prompt in PLAIN TEXT (no markdown)",
-  "summary": "Brief one-line summary",
-  "tips": ["tip1", "tip2"]
-}
-
-Remember: The prompt should be IMMEDIATELY USABLE - clean plain text that can be pasted anywhere!`;
+  "prompt": "The prompt in plain text",
+  "summary": "Brief summary"
+}`;
 
   const encoder = new TextEncoder();
   let fullContent = "";
   
   try {
-    // Create streaming response
     const stream = new ReadableStream({
       async start(controller) {
         try {
@@ -91,7 +71,6 @@ Remember: The prompt should be IMMEDIATELY USABLE - clean plain text that can be
             }
           );
           
-          // Parse the JSON response
           let parsedResult;
           try {
             const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -103,14 +82,13 @@ Remember: The prompt should be IMMEDIATELY USABLE - clean plain text that can be
           } catch {
             parsedResult = {
               prompt: content,
-              summary: "Custom prompt based on your requirements",
-              tips: []
+              summary: "Custom prompt"
             };
           }
 
           const finalPrompt = parsedResult.prompt || content;
           
-          // Clean any remaining markdown from the prompt
+          // Clean any remaining markdown
           const cleanPrompt = finalPrompt
             .replace(/\*\*([^*]+)\*\*/g, '$1')
             .replace(/\*([^*]+)\*/g, '$1')
@@ -121,14 +99,12 @@ Remember: The prompt should be IMMEDIATELY USABLE - clean plain text that can be
 
           console.log("[Generate] Prompt generated, length:", cleanPrompt.length);
           
-          // Track usage
           try {
             await trackUsage(verification.userId);
           } catch (e) {
             console.error("[Generate] Failed to track usage:", e);
           }
           
-          // Increment user's total prompts generated count
           try {
             await connectDB();
             await (UserModel as any).findByIdAndUpdate(
@@ -139,13 +115,12 @@ Remember: The prompt should be IMMEDIATELY USABLE - clean plain text that can be
             console.error("[Generate] Failed to increment count:", e);
           }
 
-          // Send completion message
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ 
               type: 'complete', 
               prompt: cleanPrompt,
               summary: parsedResult.summary || "",
-              tips: parsedResult.tips || []
+              tips: []
             })}\n\n`)
           );
           
