@@ -14,13 +14,13 @@ An AI-powered prompt generation platform that helps users create perfect prompts
 - **Perfect Results** - Get optimized prompts that work first time
 - **Smart Retry** - Retry goes through analysis to check if enough info before regenerating
 
-### 💬 ChatGPT-like Experience
+### 💬 Chat Experience
 - **Real-time Chat History** - Every message saved instantly to MongoDB
 - **Session Recovery** - Resume any conversation from sidebar
 - **Grouped History** - Chats organized by Today, Yesterday, This Week
 - **Collapsible Sidebar** - Maximize your workspace
-- **Concurrent Chat Support** - Multiple chats can generate simultaneously
-- **AbortController** - Stop generation when switching chats, with resume option
+- **Stop & Resume** - Generation stops when switching chats, resume with retry button
+- **AbortController** - Clean cancellation of ongoing AI generation
 
 ### 🎨 Modern UI/UX
 - **Dark/Light Theme** - Toggle between themes
@@ -324,6 +324,7 @@ docker run -p 3000:3000 purompto
 - **JWT Tokens**: Secure, http-only cookies
 - **Request Signing**: Timestamp + nonce validation
 - **Input Sanitization**: XSS prevention
+- **Max Prompt Length**: 10,000 characters
 
 ## 📝 License
 
