@@ -774,7 +774,7 @@ export default function HomePage() {
         <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
-              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl border ${isDark ? 'border-zinc-700' : 'border-gray-300'} focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50`}>
+              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
                 <Textarea 
                   ref={inputRef}
                   placeholder="Describe what you want to create..." 
@@ -797,7 +797,7 @@ export default function HomePage() {
 
             {(state === "chatting" || state === "generating") && (
               <div>
-                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl border ${isDark ? 'border-zinc-700' : 'border-gray-300'} focus-within:border-emerald-500/50 focus-within:ring-1 focus-within:ring-emerald-500/50`}>
+                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
                   <Textarea 
                     ref={inputRef}
                     placeholder="Type your answer..." 
@@ -817,7 +817,7 @@ export default function HomePage() {
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className={`mt-2 flex items-center gap-1.5 text-xs ${theme.textMuted} px-1`}>
+                <div className={`mt-2 flex items-center justify-center gap-1.5 text-xs ${theme.textMuted}`}>
                   <Lightbulb className="w-3 h-3 text-emerald-500" />
                   <span>Answer with detail for a better prompt</span>
                 </div>
