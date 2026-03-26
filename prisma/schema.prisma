@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:/home/z/my-project/db/purompto.db"
+}
+
+// User table for authentication and tracking
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  password      String
+  name          String?
+  avatar        String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  subscription  Subscription?
+  prompts       Prompt[]
+  settings      UserSettings?
+
+  @@map("users")
+}
+
+// Subscription for premium plans
+model Subscription {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plan          String        @default("free") // free, pro, enterprise
+  status        String        @default("active") // active, canceled, expired
+  
+  paymentMethod String?       // paypal, gpay, paytm
+  paymentId     String?       // Transaction ID
+  
+  startDate     DateTime      @default(now())
+  endDate       DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("subscriptions")
+}
+
+// Prompt table - saves all generated prompts by users
+model Prompt {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  task          String        // Original task description
+  questions     String        // JSON string of clarifying questions
+  answers       String        // JSON string of user answers  
+  result        String        // Generated prompt
+  
+  questionCount Int           @default(0)
+  createdAt     DateTime      @default(now())
+
+  @@map("prompts")
+}
+
+// User settings
+model UserSettings {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  theme         String        @default("light")
+  emailNotifications Boolean  @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("user_settings")
+}
+
+// Site-wide settings
+model SiteSettings {
+  id            String        @id @default(cuid())
+  key           String        @unique
+  value         String
+  description   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("site_settings")
+}
+
+// API Keys for multi-tenant
+model ApiKey {
+  id            String        @id @default(cuid())
+  name          String
+  key           String        @unique
+  provider      String
+  isActive      Boolean       @default(true)
+  
+  monthlyLimit  Int?
+  usedThisMonth Int           @default(0)
+  ownerId       String?
+  lastUsedAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("api_keys")
+}
