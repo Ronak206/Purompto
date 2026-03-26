@@ -1007,8 +1007,8 @@ export default function HomePage() {
               <div key={msg.id || i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : ""} gap-2.5`}>
                 {msg.role === 'user' ? (
                   <>
-                    <div className="group relative flex-1 max-w-full">
-                      <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
+                    <div className="group relative">
+                      <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.userBubble}`}>
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
                       </div>
                       {/* Retry button on hover - only show for last message before result when there's no result */}
@@ -1151,8 +1151,8 @@ export default function HomePage() {
               <div key={msg.id || `after-${i}`} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : ""} gap-2.5`}>
                 {msg.role === 'user' ? (
                   <>
-                    <div className="flex-1 max-w-full">
-                      <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
+                    <div>
+                      <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.userBubble}`}>
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
                       </div>
                     </div>
