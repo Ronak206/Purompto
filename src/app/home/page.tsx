@@ -369,11 +369,9 @@ export default function HomePage() {
   const addMessageAfterGeneration = async () => {
     if (!input.trim()) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
-    
-    // Mark as remaining since user wants to refine
-    await saveToChat({ status: "remaining" });
     
     const userMessage: ChatMessage = { 
       id: Date.now().toString(),
@@ -387,9 +385,14 @@ export default function HomePage() {
     // Don't clear result - keep it visible for user to copy
     setState("chatting");
     
-    await saveToChat({ message: userMessage });
+    // Let browser paint before heavy work
+    await new Promise(r => requestAnimationFrame(r));
     
     try {
+      // Mark as remaining since user wants to refine
+      await saveToChat({ status: "remaining" });
+      await saveToChat({ message: userMessage });
+      
       const r = await authFetch("/api/analyze", { method: "POST" }, { task, conversation: newConversation.map(m => ({ role: m.role, content: m.content })) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
@@ -437,6 +440,7 @@ export default function HomePage() {
   const startConversation = async () => {
     if (!task.trim()) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
     setState("chatting");
@@ -448,13 +452,16 @@ export default function HomePage() {
     };
     setConversation([userMessage]);
     
-    await saveToChat({ 
-      message: userMessage, 
-      title: task.slice(0, 50) + (task.length > 50 ? "..." : ""),
-      createNew: true 
-    });
+    // Let browser paint before heavy work
+    await new Promise(r => requestAnimationFrame(r));
     
     try {
+      await saveToChat({ 
+        message: userMessage, 
+        title: task.slice(0, 50) + (task.length > 50 ? "..." : ""),
+        createNew: true 
+      });
+      
       const r = await authFetch("/api/analyze", { method: "POST" }, { task, conversation: [] });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);
@@ -492,6 +499,7 @@ export default function HomePage() {
   const sendMessage = async () => {
     if (!input.trim() || working) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
     
@@ -503,11 +511,14 @@ export default function HomePage() {
     setConversation(prev => [...prev, userMessage]);
     setInput("");
     
-    await saveToChat({ message: userMessage });
+    // Let browser paint before heavy work
+    await new Promise(r => requestAnimationFrame(r));
     
     const conversationSoFar = [...conversation, userMessage];
     
     try {
+      await saveToChat({ message: userMessage });
+      
       const r = await authFetch("/api/analyze", { method: "POST" }, { task, conversation: conversationSoFar.map(m => ({ role: m.role, content: m.content })) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error);

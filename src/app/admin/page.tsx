@@ -31,6 +31,15 @@ interface PromptInfo {
   createdAt: string;
 }
 
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  questions?: string[];
+  questionReasons?: string[];
+  createdAt?: string;
+}
+
 interface ChatInfo {
   id: string;
   userId: string;
@@ -40,6 +49,7 @@ interface ChatInfo {
   status: string;
   result: string;
   summary: string;
+  messages: ChatMessage[];
   messageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -848,7 +858,7 @@ export default function AdminPage() {
         {/* View Chat Modal */}
         {viewingChat && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] bg-zinc-900 border border-white/10 rounded-xl overflow-hidden flex flex-col">
+            <div className="w-full max-w-3xl max-h-[90vh] bg-zinc-900 border border-white/10 rounded-xl overflow-hidden flex flex-col">
               <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-lg">Chat Details</h3>
@@ -871,25 +881,50 @@ export default function AdminPage() {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-emerald-400 mb-2">User</h4>
-                  <p className="text-sm bg-black/30 p-3 rounded-lg">{viewingChat.userName || viewingChat.userEmail}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-emerald-400 mb-2">Title</h4>
-                  <p className="text-sm bg-black/30 p-3 rounded-lg">{viewingChat.title}</p>
+                {/* User & Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-xs font-medium text-white/60 mb-1">User</h4>
+                    <p className="text-sm bg-black/30 p-2 rounded-lg">{viewingChat.userName || viewingChat.userEmail}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-medium text-white/60 mb-1">Title</h4>
+                    <p className="text-sm bg-black/30 p-2 rounded-lg truncate">{viewingChat.title}</p>
+                  </div>
                 </div>
                 <div className="flex gap-4 text-xs text-white/40">
                   <span>{viewingChat.messageCount} messages</span>
                   <span>Created: {formatDate(viewingChat.createdAt)}</span>
                   <span>Updated: {formatDate(viewingChat.updatedAt)}</span>
                 </div>
-                {viewingChat.summary && (
+                
+                {/* Messages */}
+                {viewingChat.messages && viewingChat.messages.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-emerald-400 mb-2">Summary</h4>
-                    <p className="text-sm bg-black/30 p-3 rounded-lg">{viewingChat.summary}</p>
+                    <h4 className="text-sm font-medium text-emerald-400 mb-3">Conversation</h4>
+                    <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                      {viewingChat.messages.map((msg, i) => (
+                        <div key={msg.id || i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user' ? 'bg-emerald-600 text-white rounded-br-md' : 'bg-zinc-800 text-white rounded-bl-md'}`}>
+                            <div className="text-xs text-white/60 mb-1">{msg.role === 'user' ? 'User' : 'AI'}</div>
+                            <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                            {msg.questions && msg.questions.length > 0 && (
+                              <div className="mt-2 space-y-1">
+                                {msg.questions.map((q, qi) => (
+                                  <div key={qi} className="text-xs bg-white/5 p-2 rounded">
+                                    💡 {q}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+                
+                {/* Generated Result */}
                 {viewingChat.result && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
@@ -899,7 +934,7 @@ export default function AdminPage() {
                         {promptCopied ? "Copied!" : "Copy"}
                       </Button>
                     </div>
-                    <div className="text-sm bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg max-h-80 overflow-y-auto whitespace-pre-wrap">
+                    <div className="text-sm bg-gradient-to-br from-teal-950/80 to-cyan-900/60 border border-teal-700 p-3 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap">
                       {viewingChat.result}
                     </div>
                   </div>
