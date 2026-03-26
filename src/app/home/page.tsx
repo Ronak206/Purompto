@@ -1024,6 +1024,19 @@ export default function HomePage() {
               </div>
             )}
             
+            {/* Tips - shown below the conversation, above the generated prompt */}
+            {tips && tips.length > 0 && result && state !== "generating" && (
+              <div className="mb-3 flex justify-end">
+                <div className="space-y-1.5 max-w-[85%]">
+                  {tips.map((tip, i) => (
+                    <div key={i} className={`text-xs p-2 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
+                      💡 {tip}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             {/* Generated Result - show as a bubble if result exists and not currently generating */}
             {result && state !== "generating" && (
               <div className="mb-3">
@@ -1041,15 +1054,6 @@ export default function HomePage() {
                   <div className={`text-sm leading-relaxed max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
                     {result}
                   </div>
-                  {tips && tips.length > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      {tips.map((tip, i) => (
-                        <div key={i} className={`text-xs p-2 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
-                          💡 {tip}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
