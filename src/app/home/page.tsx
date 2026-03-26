@@ -78,6 +78,10 @@ export default function HomePage() {
   const [chatConversations, setChatConversations] = useState<Record<string, ChatMessage[]>>({});
   // Track failed generations per chat
   const [failedGenerations, setFailedGenerations] = useState<Record<string, string>>({});
+  // Track interrupted generations per chat (when user navigates away during generation)
+  const [interruptedGenerations, setInterruptedGenerations] = useState<Record<string, string>>({});
+  // Track partial streaming text per chat
+  const [chatPartialText, setChatPartialText] = useState<Record<string, string>>({});
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -168,6 +172,23 @@ export default function HomePage() {
   const loadChat = async (chatId: string) => {
     if (!apiToken || !user) return;
     
+    // If currently generating on another chat, mark it as interrupted
+    if (generatingChatIdRef.current && generatingChatIdRef.current !== chatId) {
+      const interruptedChatId = generatingChatIdRef.current;
+      // Store the partial streaming text for this interrupted chat
+      if (streamingText) {
+        setChatPartialText(prev => ({
+          ...prev,
+          [interruptedChatId]: streamingText
+        }));
+        setInterruptedGenerations(prev => ({
+          ...prev,
+          [interruptedChatId]: streamingText
+        }));
+      }
+      generatingChatIdRef.current = null;
+    }
+    
     // Don't abort - allow concurrent chat operations
     // Just load the new chat data
     try {
@@ -197,19 +218,26 @@ export default function HomePage() {
         setResult(chat.result || "");
         setSummary(chat.summary || "");
         setTips([]);
+        setStreamingText("");
         
-        // Check if this chat had a failed generation
+        // Check if this chat had a failed or interrupted generation
         const chatFailedError = failedGenerations[chat.chatId];
+        const chatInterrupted = interruptedGenerations[chat.chatId];
+        const chatPartial = chatPartialText[chat.chatId];
+        
         if (chatFailedError && !chat.result) {
           setError(chatFailedError);
+          setState("chatting");
+        } else if (chatInterrupted && !chat.result) {
+          // Show the partial text and retry option
+          setStreamingText(chatPartial || "");
+          setError(null);
           setState("chatting");
         } else {
           setError(null);
           setState(chat.result ? "generated" : (chat.messages?.length > 0 ? "chatting" : "idle"));
         }
         
-        // Don't reset streamingText - let other chat continue
-        // Don't reset working - let other chat continue
         setSidebarOpen(false);
       }
     } catch (e) {
@@ -316,6 +344,66 @@ export default function HomePage() {
     currentChatIdRef.current = null;
     generatingChatIdRef.current = null;
     setSidebarOpen(false);
+  };
+  
+  // Add message to conversation after generation (to continue refining)
+  const addMessageAfterGeneration = async () => {
+    if (!input.trim()) return;
+    
+    setWorking(true);
+    setError(null);
+    
+    // Mark as remaining since user wants to refine
+    await saveToChat({ status: "remaining" });
+    
+    const userMessage: ChatMessage = { 
+      id: Date.now().toString(),
+      role: 'user', 
+      content: input 
+    };
+    
+    const newConversation = [...conversation, userMessage];
+    setConversation(newConversation);
+    setInput("");
+    setResult("");
+    setState("chatting");
+    
+    await saveToChat({ message: userMessage });
+    
+    try {
+      const r = await authFetch("/api/analyze", { method: "POST" }, { task, conversation: newConversation.map(m => ({ role: m.role, content: m.content })) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      
+      const assistantMessage: ChatMessage = { 
+        id: Date.now().toString(),
+        role: 'assistant', 
+        content: d.message,
+        questions: d.questions,
+        questionReasons: d.questionReasons
+      };
+      
+      const finalConversation = [...newConversation, assistantMessage];
+      setConversation(finalConversation);
+      
+      if (currentChatIdRef.current) {
+        setChatConversations(prev => ({
+          ...prev,
+          [currentChatIdRef.current!]: finalConversation
+        }));
+      }
+      
+      await saveToChat({ message: assistantMessage });
+      
+      if (d.readyToGenerate) {
+        generatePrompt(finalConversation);
+      }
+      
+    } catch (e) { 
+      setError(e instanceof Error ? e.message : "Error"); 
+    } finally { 
+      setWorking(false); 
+    }
   };
 
   const continueChatting = async () => {
@@ -492,8 +580,18 @@ export default function HomePage() {
                     setStreamingText(fullText);
                   }
                 } else if (data.type === 'complete') {
-                  // Clear any failed generation for this chat
+                  // Clear any failed/interrupted generation for this chat
                   setFailedGenerations(prev => {
+                    const updated = { ...prev };
+                    delete updated[chatIdForGeneration];
+                    return updated;
+                  });
+                  setInterruptedGenerations(prev => {
+                    const updated = { ...prev };
+                    delete updated[chatIdForGeneration];
+                    return updated;
+                  });
+                  setChatPartialText(prev => {
                     const updated = { ...prev };
                     delete updated[chatIdForGeneration];
                     return updated;
@@ -504,6 +602,7 @@ export default function HomePage() {
                     setResult(data.prompt || fullText);
                     setSummary(data.summary || "");
                     setTips(data.tips || []);
+                    setStreamingText("");
                     setUser(p => p ? { ...p, totalPromptsGenerated: (p.totalPromptsGenerated || 0) + 1 } : p);
                     setState("generated");
                   }
@@ -554,9 +653,20 @@ export default function HomePage() {
     
     if (conversationToUse.length > 0) {
       setError(null);
-      // Clear the failed generation for this chat
+      setStreamingText("");
+      // Clear the failed/interrupted generation for this chat
       if (chatId) {
         setFailedGenerations(prev => {
+          const updated = { ...prev };
+          delete updated[chatId];
+          return updated;
+        });
+        setInterruptedGenerations(prev => {
+          const updated = { ...prev };
+          delete updated[chatId];
+          return updated;
+        });
+        setChatPartialText(prev => {
           const updated = { ...prev };
           delete updated[chatId];
           return updated;
@@ -615,8 +725,8 @@ export default function HomePage() {
     bgCard: isDark ? "bg-zinc-900" : "bg-white",
     bgInput: isDark ? "bg-zinc-800" : "bg-white",
     sidebarBg: isDark ? "bg-zinc-900" : "bg-white",
-    promptBg: isDark ? "bg-emerald-950/50 border-emerald-900" : "bg-emerald-50 border-emerald-200",
-    promptText: isDark ? "text-emerald-400" : "text-emerald-600",
+    promptBg: isDark ? "bg-gradient-to-br from-violet-950/80 to-purple-900/60 border-violet-700" : "bg-gradient-to-br from-violet-100 to-purple-50 border-violet-300",
+    promptText: isDark ? "text-violet-300" : "text-violet-700",
     userBubble: isDark ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white",
     aiBubble: isDark ? "bg-zinc-800 text-white" : "bg-gray-100 text-gray-900",
     tipBg: isDark ? "bg-amber-950/30 border-amber-900" : "bg-amber-50 border-amber-200",
@@ -848,18 +958,18 @@ export default function HomePage() {
 
             {/* Generated Result */}
             {state === "generated" && result && (
-              <div className={`mt-4 p-4 rounded-2xl ${theme.promptBg} border`}>
+              <div className={`mt-4 p-4 rounded-2xl ${theme.promptBg} border shadow-lg`}>
                 <div className="flex justify-between items-center mb-3">
                   <div className={`flex items-center gap-2 ${theme.promptText}`}>
                     <CheckCircle className="w-4 h-4" />
                     <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
                   </div>
-                  <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-emerald-500/20 h-7`}>
+                  <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-violet-500/20 h-7`}>
                     {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
                   </Button>
                 </div>
-                <div className={`text-sm leading-relaxed max-h-52 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white'} whitespace-pre-wrap`}>
+                <div className={`text-sm leading-relaxed max-h-52 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/40' : 'bg-white'} whitespace-pre-wrap`}>
                   {result}
                 </div>
                 {tips && tips.length > 0 && (
@@ -889,17 +999,22 @@ export default function HomePage() {
               </div>
             )}
             
-            {/* Show retry option for chats that have conversation but no result and not currently generating */}
-            {!error && conversation.length > 0 && !result && state !== "generating" && !working && (
-              <div className="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm flex items-center justify-between gap-2">
-                <span>Prompt generation incomplete. Would you like to retry?</span>
-                <Button 
-                  onClick={retryGeneration} 
-                  size="xs" 
-                  className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 h-7"
-                >
-                  <RefreshCcw className="w-3 h-3 mr-1" /> Retry
-                </Button>
+            {/* Show interrupted generation with partial text and retry option */}
+            {!error && streamingText && state !== "generating" && (
+              <div className="mb-4">
+                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
+                  <div className={`text-xs font-medium text-amber-400 mb-2`}>⚠️ Generation was interrupted</div>
+                  <div className="whitespace-pre-wrap text-sm opacity-70">{streamingText}</div>
+                </div>
+                <div className="mt-2">
+                  <Button 
+                    onClick={retryGeneration} 
+                    size="xs" 
+                    className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 h-7"
+                  >
+                    <RefreshCcw className="w-3 h-3 mr-1" /> Continue Generation
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -960,22 +1075,36 @@ export default function HomePage() {
             )}
 
             {state === "generated" && (
-              <div className="flex justify-center gap-2">
-                <Button 
-                  onClick={continueChatting}
-                  variant="outline"
-                  size="sm"
-                  className="h-9 px-4"
-                >
-                  <ArrowRight className="w-3.5 h-3.5 mr-1.5" /> Continue
-                </Button>
-                <Button 
-                  onClick={reset} 
-                  size="sm"
-                  className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-9 px-4"
-                >
-                  <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> New Chat
-                </Button>
+              <div>
+                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl mb-2`}>
+                  <Textarea 
+                    ref={inputRef}
+                    placeholder="Add more details or ask for changes..." 
+                    value={input} 
+                    onChange={e => setInput(e.target.value)} 
+                    className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
+                    disabled={working}
+                    rows={1}
+                  />
+                  <Button 
+                    onClick={addMessageAfterGeneration} 
+                    disabled={!input.trim() || working} 
+                    size="icon"
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl mr-2 mb-2 flex-shrink-0"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex justify-center gap-2">
+                  <Button 
+                    onClick={reset} 
+                    size="sm"
+                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 h-8 px-4"
+                  >
+                    <RefreshCcw className="w-3.5 h-3.5 mr-1.5" /> New Chat
+                  </Button>
+                </div>
               </div>
             )}
           </div>
