@@ -39,10 +39,10 @@ function MarkdownRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
       components={{
-        p: ({ children }) => <p className="mb-2 leading-relaxed text-sm">{children}</p>,
+        p: ({ children }) => <p className="mb-2 leading-[1.5] text-[15px]">{children}</p>,
         strong: ({ children }) => <strong className="font-semibold text-emerald-400">{children}</strong>,
-        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 text-sm">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-sm">{children}</ol>,
+        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 text-[15px]">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-[15px]">{children}</ol>,
       }}
     >
       {content}
@@ -944,11 +944,11 @@ export default function HomePage() {
             
             {/* Render messages BEFORE the generated result */}
             {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
-              <div key={msg.id || i} className={`mb-3 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+              <div key={msg.id || i} className={`mb-2.5 ${msg.role === "user" ? "flex justify-end" : ""}`}>
                 {msg.role === 'user' ? (
                   <div className="group relative">
-                    <div className={`px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] ${theme.userBubble}`}>
-                      <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                    <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
+                      <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                     </div>
                     {/* Retry button on hover - only show for last message before result when there's no result */}
                     {i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
@@ -970,14 +970,14 @@ export default function HomePage() {
                     )}
                   </div>
                 ) : (
-                  <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
                     <div className="prose prose-sm max-w-none">
                       <MarkdownRenderer content={msg.content} />
                       {msg.questions && msg.questions.length > 0 && (
                         <div className="mt-3 space-y-2">
                           {msg.questions.map((q, qi) => (
                             <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                              <div className="font-medium text-sm">💡 {q}</div>
+                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
                               {msg.questionReasons?.[qi] && (
                                 <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
                               )}
@@ -993,18 +993,18 @@ export default function HomePage() {
             
             {/* Generating state */}
             {state === "generating" && !streamingText && (
-              <div className="mb-3">
-                <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-bl-md ${theme.aiBubble}`}>
+              <div className="mb-2.5">
+                <div className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-                  <span className="text-sm">Creating your prompt...</span>
+                  <span className="text-[15px] leading-[1.5]">Creating your prompt...</span>
                 </div>
               </div>
             )}
 
             {/* Streaming output with markdown */}
             {state === "generating" && streamingText && (
-              <div className="mb-3">
-                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+              <div className="mb-2.5">
+                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
                   <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating your prompt...</div>
                   <div className="prose prose-sm max-w-none">
                     <MarkdownRenderer content={streamingText} />
@@ -1016,18 +1016,18 @@ export default function HomePage() {
             
             {/* Thinking state */}
             {working && state !== "generating" && (
-              <div className="mb-3">
-                <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-bl-md ${theme.aiBubble}`}>
+              <div className="mb-2.5">
+                <div className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
-                  <span className="text-sm">Thinking...</span>
+                  <span className="text-[15px] leading-[1.5]">Thinking...</span>
                 </div>
               </div>
             )}
             
             {/* Tips - shown below the conversation, above the generated prompt */}
             {tips && tips.length > 0 && result && state !== "generating" && (
-              <div className="mb-3 flex justify-end">
-                <div className="space-y-1.5 max-w-[85%]">
+              <div className="mb-2.5 flex justify-end">
+                <div className="space-y-1.5 max-w-[70%]">
                   {tips.map((tip, i) => (
                     <div key={i} className={`text-xs p-2 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
                       💡 {tip}
@@ -1039,19 +1039,19 @@ export default function HomePage() {
             
             {/* Generated Result - show as a bubble if result exists and not currently generating */}
             {result && state !== "generating" && (
-              <div className="mb-3">
-                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.promptBg} border shadow-md`}>
+              <div className="mb-2.5">
+                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.promptBg} border shadow-md`}>
                   <div className="flex justify-between items-center mb-2">
                     <div className={`flex items-center gap-2 ${theme.promptText}`}>
                       <CheckCircle className="w-4 h-4" />
-                      <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
+                      <span className="font-medium text-[15px]">{summary || "Your Prompt"}</span>
                     </div>
                     <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-teal-500/20 h-6 px-2`}>
                       {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                       <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
                     </Button>
                   </div>
-                  <div className={`text-sm leading-relaxed max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
+                  <div className={`text-[15px] leading-[1.5] max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
                     {result}
                   </div>
                 </div>
@@ -1060,20 +1060,20 @@ export default function HomePage() {
             
             {/* Render messages AFTER the generated result */}
             {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
-              <div key={msg.id || `after-${i}`} className={`mb-3 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+              <div key={msg.id || `after-${i}`} className={`mb-2.5 ${msg.role === "user" ? "flex justify-end" : ""}`}>
                 {msg.role === 'user' ? (
-                  <div className={`px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] ${theme.userBubble}`}>
-                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.userBubble}`}>
+                    <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                   </div>
                 ) : (
-                  <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+                  <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
                     <div className="prose prose-sm max-w-none">
                       <MarkdownRenderer content={msg.content} />
                       {msg.questions && msg.questions.length > 0 && (
                         <div className="mt-3 space-y-2">
                           {msg.questions.map((q, qi) => (
                             <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
-                              <div className="font-medium text-sm">💡 {q}</div>
+                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
                               {msg.questionReasons?.[qi] && (
                                 <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
                               )}
@@ -1089,7 +1089,7 @@ export default function HomePage() {
 
             {/* Show error with retry button */}
             {error && (
-              <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-2">
+              <div className="mb-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-[15px] leading-[1.5] flex items-center justify-between gap-2">
                 <span>{error}</span>
                 <Button 
                   onClick={retryGeneration} 
@@ -1104,10 +1104,10 @@ export default function HomePage() {
             
             {/* Show interrupted generation with partial text and retry option */}
             {!error && streamingText && state !== "generating" && (
-              <div className="mb-3">
-                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+              <div className="mb-2.5">
+                <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[70%] ${theme.aiBubble}`}>
                   <div className={`text-xs font-medium text-amber-400 mb-2`}>⚠️ Generation was interrupted</div>
-                  <div className="whitespace-pre-wrap text-sm opacity-70">{streamingText}</div>
+                  <div className="whitespace-pre-wrap text-[15px] leading-[1.5] opacity-70">{streamingText}</div>
                 </div>
                 <div className="mt-2">
                   <Button 
@@ -1125,19 +1125,19 @@ export default function HomePage() {
           </div>
         </main>
 
-        {/* Bottom Input - z.ai style */}
+        {/* Bottom Input - ChatGPT style auto-expanding */}
         <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
             {state === "idle" && (
-              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
+              <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
                 <Textarea 
                   ref={inputRef}
                   placeholder="Describe what you want to create..." 
                   value={task} 
                   onChange={e => setTask(e.target.value)} 
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
-                  rows={1}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                  rows={Math.min(6, Math.max(1, Math.ceil(task.length / 50)))}
                 />
                 <Button 
                   onClick={startConversation} 
@@ -1152,16 +1152,16 @@ export default function HomePage() {
 
             {(state === "chatting" || state === "generating") && (
               <div>
-                <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
+                <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
                   <Textarea 
                     ref={inputRef}
                     placeholder="Type your answer..." 
                     value={input} 
                     onChange={e => setInput(e.target.value)} 
-                    className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
                     disabled={working}
-                    rows={1}
+                    rows={Math.min(6, Math.max(1, Math.ceil(input.length / 50)))}
                   />
                   <Button 
                     onClick={sendMessage} 
@@ -1180,16 +1180,16 @@ export default function HomePage() {
             )}
 
             {state === "generated" && (
-              <div className={`relative flex items-end ${theme.bgInput} rounded-2xl`}>
+              <div className={`relative flex items-end ${theme.bgInput} rounded-[18px]`}>
                 <Textarea 
                   ref={inputRef}
                   placeholder="Add more details or ask for changes..." 
                   value={input} 
                   onChange={e => setInput(e.target.value)} 
-                  className={`flex-1 min-h-[48px] max-h-[120px] text-sm py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none`} 
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
                   disabled={working}
-                  rows={1}
+                  rows={Math.min(6, Math.max(1, Math.ceil(input.length / 50)))}
                 />
                 <Button 
                   onClick={addMessageAfterGeneration} 
