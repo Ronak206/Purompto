@@ -324,7 +324,6 @@ docker run -p 3000:3000 purompto
 - **JWT Tokens**: Secure, http-only cookies
 - **Request Signing**: Timestamp + nonce validation
 - **Input Sanitization**: XSS prevention
-- **Max Prompt Length**: 10,000 characters
 
 ## 📝 License
 
