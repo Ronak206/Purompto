@@ -3,7 +3,7 @@
 An AI-powered prompt generation platform that helps users create perfect prompts through intelligent clarifying questions. Built with modern technologies for a professional, ChatGPT-like experience.
 
 ![Purompto](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=flat-square&logo=mongodb)
 
 ## ✨ Features
@@ -31,7 +31,7 @@ An AI-powered prompt generation platform that helps users create perfect prompts
 - **Copy to Clipboard** - One-click copy for prompts
 - **User/AI Avatars** - Flex layout with avatars beside message bubbles
 - **ChatGPT-style Bubbles** - 18px radius, proper spacing, professional look
-- **shadcn/ui Components** - Avatar, Badge, Button, Input, Sidebar components
+- **shadcn/ui Components** - Avatar, Badge, Button, Input, ScrollArea, Sheet, Sidebar, etc.
 
 ### 🎯 Generated Prompt Styling
 - **Teal/Cyan Gradient** - Beautiful gradient background for generated prompts
@@ -110,22 +110,53 @@ npm run dev
 ```
 src/
 ├── app/
+│   ├── page.tsx               # Login page
 │   ├── home/page.tsx          # Main chat interface
 │   ├── admin/page.tsx         # Admin panel
 │   ├── api/
 │   │   ├── chat/route.ts      # Chat CRUD operations
 │   │   ├── analyze/route.ts   # AI question generation
+│   │   ├── clarify/route.ts   # Clarification endpoint
 │   │   ├── generate/route.ts  # Prompt generation (streaming)
-│   │   ├── generate/system-prompt.ts  # System prompt
-│   │   └── auth/              # Authentication APIs
-│   └── layout.tsx
+│   │   ├── prompts/route.ts   # Prompts listing
+│   │   ├── health/route.ts    # Health check
+│   │   ├── webhook/route.ts   # Webhook handler
+│   │   ├── auth/              # Authentication APIs
+│   │   │   ├── login/route.ts
+│   │   │   ├── logout/route.ts
+│   │   │   ├── me/route.ts
+│   │   │   ├── token/route.ts
+│   │   │   └── signup/route.ts
+│   │   └── admin/             # Admin APIs
+│   │       ├── users/route.ts
+│   │       ├── chats/route.ts
+│   │       └── prompts/route.ts
+│   ├── layout.tsx
+│   └── globals.css
 ├── components/ui/             # shadcn/ui components
+│   ├── avatar.tsx
+│   ├── badge.tsx
+│   ├── button.tsx
+│   ├── card.tsx
+│   ├── input.tsx
+│   ├── scroll-area.tsx
+│   ├── sheet.tsx
+│   ├── sidebar.tsx
+│   ├── skeleton.tsx
+│   ├── textarea.tsx
+│   └── tooltip.tsx
+├── hooks/
+│   └── use-mobile.ts          # Mobile detection hook
 ├── lib/
 │   ├── ai.ts                  # OpenRouter integration
 │   ├── auth.ts                # Authentication utilities
 │   ├── client-secure.ts       # Client-side request signing
-│   └── mongodb.ts             # Database models
-└── models/                    # Mongoose schemas
+│   ├── mongodb.ts             # Database connection & models
+│   ├── payments.ts            # Payment processing
+│   ├── store.ts               # Zustand store
+│   └── utils.ts               # Utility functions
+└── models/
+    └── index.ts               # Mongoose schemas
 ```
 
 ## 🗄️ Database Models
@@ -172,6 +203,7 @@ src/
 ```http
 POST /api/auth/login      # Login
 POST /api/auth/logout     # Logout
+POST /api/auth/signup     # Create account (admin only)
 GET  /api/auth/me         # Current user
 GET  /api/auth/token      # Get JWT token
 ```
@@ -187,6 +219,7 @@ DELETE /api/chat?chatId=x # Delete chat
 ### AI Operations
 ```http
 POST /api/analyze         # Generate questions (checks if ready)
+POST /api/clarify         # Get clarifications
 POST /api/generate        # Generate prompt (streaming SSE)
 ```
 
@@ -196,6 +229,15 @@ GET  /api/admin/users           # List users
 POST /api/admin/users           # Create user
 PUT  /api/admin/users           # Update user
 DELETE /api/admin/users?userId=x # Delete user
+GET  /api/admin/chats           # List all chats
+GET  /api/admin/prompts         # List all prompts
+```
+
+### Other
+```http
+GET  /api/prompts         # List user's prompts
+GET  /api/health          # Health check endpoint
+POST /api/webhook         # Webhook handler
 ```
 
 ## 🎯 Business Model
@@ -234,13 +276,14 @@ Client pays → Admin creates account → Client uses service
 | Category | Technology |
 |----------|------------|
 | Framework | Next.js 16 (App Router) |
-| Language | TypeScript 5 |
+| Language | TypeScript 5.9 |
 | Styling | Tailwind CSS 4 |
 | UI Components | shadcn/ui |
 | Database | MongoDB Atlas |
 | ODM | Mongoose |
 | AI Provider | OpenRouter (StepFun Step-3.5-Flash) |
 | Authentication | JWT + HTTP-only cookies |
+| State Management | Zustand |
 | Deployment | Vercel |
 
 ## 🎨 UI Components & Styling
@@ -280,8 +323,8 @@ docker run -p 3000:3000 purompto
 - **Password Hashing**: bcrypt with 12 rounds
 - **JWT Tokens**: Secure, http-only cookies
 - **Request Signing**: Timestamp + nonce validation
-- **Rate Limiting**: Ready for production
 - **Input Sanitization**: XSS prevention
+- **Max Prompt Length**: 10,000 characters
 
 ## 📝 License
 
