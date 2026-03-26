@@ -68,6 +68,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  // Track where in conversation the result was generated (to show result at correct position)
+  const [resultGeneratedAtLength, setResultGeneratedAtLength] = useState<number | null>(null);
   
   const currentChatIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -229,6 +231,13 @@ export default function HomePage() {
         setTips([]);
         setStreamingText("");
         
+        // If chat has a result, set resultGeneratedAtLength to show result at correct position
+        if (chat.result) {
+          setResultGeneratedAtLength(chat.messages?.length || 0);
+        } else {
+          setResultGeneratedAtLength(null);
+        }
+        
         // Check if this chat had a failed or interrupted generation
         const chatFailedError = failedGenerations[chat.chatId];
         const chatInterrupted = interruptedGenerations[chat.chatId];
@@ -350,6 +359,7 @@ export default function HomePage() {
     setTips([]);
     setStreamingText("");
     setWorking(false);
+    setResultGeneratedAtLength(null);
     currentChatIdRef.current = null;
     generatingChatIdRef.current = null;
     setSidebarOpen(false);
@@ -616,6 +626,7 @@ export default function HomePage() {
                     setSummary(data.summary || "");
                     setTips(data.tips || []);
                     setStreamingText("");
+                    setResultGeneratedAtLength(conversationHistory.length);
                     setUser(p => p ? { ...p, totalPromptsGenerated: (p.totalPromptsGenerated || 0) + 1 } : p);
                     setState("generated");
                   }
@@ -920,18 +931,18 @@ export default function HomePage() {
               </div>
             )}
             
-            {conversation.map((msg, i) => (
-              <div key={msg.id || i} className={`mb-4 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+            {/* Render messages BEFORE the generated result */}
+            {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
+              <div key={msg.id || i} className={`mb-3 ${msg.role === "user" ? "flex justify-end" : ""}`}>
                 {msg.role === 'user' ? (
                   <div className="group relative">
-                    <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.userBubble}`}>
+                    <div className={`px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] ${theme.userBubble}`}>
                       <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
                     </div>
-                    {/* Retry button on hover - only show for last user message when there's no result */}
-                    {i === conversation.length - 1 && !result && state !== "generating" && !working && (
+                    {/* Retry button on hover - only show for last message before result when there's no result */}
+                    {i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
                       <button
                         onClick={() => {
-                          // Retry from this point - use conversation up to and including this message
                           const conversationUpToThis = conversation.slice(0, i + 1);
                           setConversation(conversationUpToThis);
                           setChatConversations(prev => ({
@@ -940,7 +951,7 @@ export default function HomePage() {
                           }));
                           generatePrompt(conversationUpToThis);
                         }}
-                        className={`absolute -left-9 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all`}
+                        className={`absolute -left-8 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all`}
                         title="Retry from here"
                       >
                         <RefreshCcw className="w-3.5 h-3.5" />
@@ -948,7 +959,7 @@ export default function HomePage() {
                     )}
                   </div>
                 ) : (
-                  <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
+                  <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
                     <div className="prose prose-sm max-w-none">
                       <MarkdownRenderer content={msg.content} />
                       {msg.questions && msg.questions.length > 0 && (
@@ -969,66 +980,101 @@ export default function HomePage() {
               </div>
             ))}
             
+            {/* Generating state */}
             {state === "generating" && !streamingText && (
-              <div className="mb-4">
-                <div className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
+              <div className="mb-3">
+                <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-bl-md ${theme.aiBubble}`}>
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                   <span className="text-sm">Creating your prompt...</span>
                 </div>
               </div>
             )}
 
+            {/* Streaming output with markdown */}
             {state === "generating" && streamingText && (
-              <div className="mb-4">
-                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
-                  <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating...</div>
-                  <div className="whitespace-pre-wrap text-sm">{streamingText}<span className="inline-block w-1 h-4 bg-emerald-400 animate-pulse ml-0.5" /></div>
+              <div className="mb-3">
+                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+                  <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating your prompt...</div>
+                  <div className="prose prose-sm max-w-none">
+                    <MarkdownRenderer content={streamingText} />
+                    <span className="inline-block w-1.5 h-4 bg-emerald-400 animate-pulse ml-0.5" />
+                  </div>
                 </div>
               </div>
             )}
             
+            {/* Thinking state */}
             {working && state !== "generating" && (
-              <div className="mb-4">
-                <div className={`inline-flex items-center gap-2 px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
+              <div className="mb-3">
+                <div className={`inline-flex items-center gap-2 px-4 py-3 rounded-2xl rounded-bl-md ${theme.aiBubble}`}>
                   <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                   <span className="text-sm">Thinking...</span>
                 </div>
               </div>
             )}
             
-            <div ref={scrollRef} />
-
-            {/* Generated Result - show if result exists and not currently generating */}
+            {/* Generated Result - show as a bubble if result exists and not currently generating */}
             {result && state !== "generating" && (
-              <div className={`mt-4 p-4 rounded-2xl ${theme.promptBg} border shadow-lg`}>
-                <div className="flex justify-between items-center mb-3">
-                  <div className={`flex items-center gap-2 ${theme.promptText}`}>
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
+              <div className="mb-3">
+                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.promptBg} border shadow-md`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className={`flex items-center gap-2 ${theme.promptText}`}>
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="font-medium text-sm">{summary || "Your Prompt"}</span>
+                    </div>
+                    <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-teal-500/20 h-6 px-2`}>
+                      {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                      <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-teal-500/20 h-7`}>
-                    {copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                    <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
-                  </Button>
+                  <div className={`text-sm leading-relaxed max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
+                    {result}
+                  </div>
+                  {tips && tips.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      {tips.map((tip, i) => (
+                        <div key={i} className={`text-xs p-2 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
+                          💡 {tip}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className={`text-sm leading-relaxed max-h-52 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/40' : 'bg-white'} whitespace-pre-wrap`}>
-                  {result}
-                </div>
-                {tips && tips.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {tips.map((tip, i) => (
-                      <div key={i} className={`text-xs p-2.5 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
-                        💡 {tip}
-                      </div>
-                    ))}
+              </div>
+            )}
+            
+            {/* Render messages AFTER the generated result */}
+            {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
+              <div key={msg.id || `after-${i}`} className={`mb-3 ${msg.role === "user" ? "flex justify-end" : ""}`}>
+                {msg.role === 'user' ? (
+                  <div className={`px-4 py-2.5 rounded-2xl rounded-br-md max-w-[85%] ${theme.userBubble}`}>
+                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                  </div>
+                ) : (
+                  <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
+                    <div className="prose prose-sm max-w-none">
+                      <MarkdownRenderer content={msg.content} />
+                      {msg.questions && msg.questions.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {msg.questions.map((q, qi) => (
+                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                              <div className="font-medium text-sm">💡 {q}</div>
+                              {msg.questionReasons?.[qi] && (
+                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
+            ))}
 
             {/* Show error with retry button */}
             {error && (
-              <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-2">
+              <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-2">
                 <span>{error}</span>
                 <Button 
                   onClick={retryGeneration} 
@@ -1043,8 +1089,8 @@ export default function HomePage() {
             
             {/* Show interrupted generation with partial text and retry option */}
             {!error && streamingText && state !== "generating" && (
-              <div className="mb-4">
-                <div className={`max-w-[85%] px-3 py-2.5 rounded-2xl ${theme.aiBubble}`}>
+              <div className="mb-3">
+                <div className={`px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] ${theme.aiBubble}`}>
                   <div className={`text-xs font-medium text-amber-400 mb-2`}>⚠️ Generation was interrupted</div>
                   <div className="whitespace-pre-wrap text-sm opacity-70">{streamingText}</div>
                 </div>
@@ -1059,6 +1105,8 @@ export default function HomePage() {
                 </div>
               </div>
             )}
+            
+            <div ref={scrollRef} />
           </div>
         </main>
 
