@@ -1008,7 +1008,7 @@ export default function HomePage() {
                 {msg.role === 'user' ? (
                   <>
                     <div className="group relative">
-                      <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.userBubble}`}>
+                      <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
                       </div>
                       {/* Retry button on hover - only show for last message before result when there's no result */}
@@ -1152,7 +1152,7 @@ export default function HomePage() {
                 {msg.role === 'user' ? (
                   <>
                     <div>
-                      <div className={`px-3.5 py-2.5 rounded-[18px] max-w-[100px] ${theme.userBubble}`}>
+                      <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
                         <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
                       </div>
                     </div>
@@ -1246,13 +1246,13 @@ export default function HomePage() {
                   value={task} 
                   onChange={handleTaskChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={startConversation} 
                   disabled={!task.trim() || working} 
                   size="icon"
-                  className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -1271,13 +1271,13 @@ export default function HomePage() {
                     onChange={handleInputChange}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
                     disabled={working}
-                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                   />
                   <Button 
                     onClick={sendMessage} 
                     disabled={!input.trim() || working} 
                     size="icon"
-                    className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                    className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                   >
                     <ArrowRight className="w-4 h-4" />
                   </Button>
@@ -1300,13 +1300,13 @@ export default function HomePage() {
                   onChange={handleInputChange}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
                   disabled={working}
-                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 px-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
                 <Button 
                   onClick={addMessageAfterGeneration} 
                   disabled={!input.trim() || working} 
                   size="icon"
-                  className="absolute bottom-2 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
                   <ArrowRight className="w-4 h-4" />
                 </Button>
