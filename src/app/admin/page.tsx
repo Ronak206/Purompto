@@ -560,17 +560,18 @@ export default function AdminPage() {
                               <p className="text-xs text-white/40 italic mt-1">Note: {user.notes}</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 ml-2">
+                          <div className="flex items-center gap-2 ml-2">
                             <button
                               onClick={() => toggleUserStatus(user.id, user.isActive)}
-                              className={`p-2 rounded-lg transition-colors ${
+                              className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                                 user.isActive
-                                  ? "text-red-400 hover:bg-red-500/10"
-                                  : "text-emerald-400 hover:bg-emerald-500/10"
+                                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                                  : "bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30"
                               }`}
                               title={user.isActive ? "Disable user" : "Enable user"}
                             >
-                              {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                              {user.isActive ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                              <span>{user.isActive ? "Deactivate" : "Activate"}</span>
                             </button>
                             <button
                               onClick={() => {
@@ -579,14 +580,14 @@ export default function AdminPage() {
                                 setEditNotes(user.notes || "");
                                 setEditPassword("");
                               }}
-                              className="p-2 rounded-lg text-white/60 hover:bg-white/10 transition-colors"
+                              className="p-1.5 rounded-lg text-white/60 hover:bg-white/10 transition-colors"
                               title="Edit user"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => deleteUser(user.id)}
-                              className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                               title="Delete user"
                             >
                               <Trash2 className="w-4 h-4" />
