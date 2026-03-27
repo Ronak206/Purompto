@@ -21,14 +21,18 @@ interface UserInfo {
 
 interface PromptInfo {
   id: string;
+  chatId: string;
   userId: string;
   userEmail: string;
   userName: string;
+  title: string;
   task: string;
-  questions: string[];
-  answers: Record<string, string>;
   result: string;
+  summary: string;
+  status: string;
+  messageCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 interface ChatMessage {
@@ -294,20 +298,20 @@ export default function AdminPage() {
     }
   };
 
-  const deletePrompt = async (promptId: string) => {
-    if (!confirm("Are you sure you want to delete this prompt?")) return;
+  const deletePrompt = async (chatId: string) => {
+    if (!confirm("Are you sure you want to clear this prompt?")) return;
     
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/prompts?promptId=${promptId}&adminSecret=${encodeURIComponent(adminSecret)}`, {
+      const res = await fetch(`/api/admin/prompts?chatId=${chatId}&adminSecret=${encodeURIComponent(adminSecret)}`, {
         method: "DELETE",
       });
       const data = await res.json();
       if (data.success) {
-        setSuccess("Prompt deleted");
+        setSuccess("Prompt cleared");
         fetchPrompts();
       } else {
-        setError(data.error || "Failed to delete prompt");
+        setError(data.error || "Failed to clear prompt");
       }
     } catch (e) {
       setError("Network error");
@@ -679,7 +683,7 @@ export default function AdminPage() {
           <div className="bg-zinc-900 border border-white/10 rounded-xl overflow-hidden">
             <div className="p-4 border-b border-white/10 flex items-center gap-2">
               <FileText className="w-4 h-4 text-emerald-400" />
-              <h2 className="font-bold">All Prompts</h2>
+              <h2 className="font-bold">All Generated Prompts</h2>
             </div>
             
             {loading && prompts.length === 0 ? (
@@ -690,7 +694,7 @@ export default function AdminPage() {
             ) : prompts.length === 0 ? (
               <div className="p-8 text-center text-white/40">
                 <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                No prompts yet
+                No prompts generated yet
               </div>
             ) : (
               <div className="divide-y divide-white/5">
@@ -699,13 +703,22 @@ export default function AdminPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium truncate">{prompt.task}</span>
+                          <span className="font-medium truncate">{prompt.title || prompt.task}</span>
+                          {prompt.status === "generated" && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">Generated</span>
+                          )}
+                          {prompt.status === "completed" && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Completed</span>
+                          )}
+                          {prompt.status === "remaining" && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">Remaining</span>
+                          )}
                         </div>
                         <p className="text-sm text-white/60 mb-1">
                           By: {prompt.userName || prompt.userEmail}
                         </p>
-                        <p className="text-xs text-white/40 line-clamp-2">{prompt.result.slice(0, 150)}...</p>
-                        <p className="text-xs text-white/40 mt-1">{formatDate(prompt.createdAt)}</p>
+                        <p className="text-xs text-white/40 line-clamp-2">{prompt.result?.slice(0, 150)}...</p>
+                        <p className="text-xs text-white/40 mt-1">{formatDate(prompt.updatedAt || prompt.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <button
@@ -716,9 +729,9 @@ export default function AdminPage() {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => deletePrompt(prompt.id)}
+                          onClick={() => deletePrompt(prompt.chatId || prompt.id)}
                           className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Delete prompt"
+                          title="Clear prompt"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -796,31 +809,34 @@ export default function AdminPage() {
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="w-full max-w-2xl max-h-[90vh] bg-zinc-900 border border-white/10 rounded-xl overflow-hidden flex flex-col">
               <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
-                <h3 className="font-bold text-lg">Prompt Details</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-lg">Prompt Details</h3>
+                  {viewingPrompt.status === "generated" && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">Generated</span>
+                  )}
+                  {viewingPrompt.status === "completed" && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Completed</span>
+                  )}
+                </div>
                 <button onClick={() => setViewingPrompt(null)} className="text-white/60 hover:text-white">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                <div>
-                  <h4 className="text-sm font-medium text-emerald-400 mb-2">User</h4>
-                  <p className="text-sm bg-black/30 p-3 rounded-lg">{viewingPrompt.userName || viewingPrompt.userEmail}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-emerald-400 mb-2">Task</h4>
-                  <p className="text-sm bg-black/30 p-3 rounded-lg">{viewingPrompt.task}</p>
-                </div>
-                {viewingPrompt.questions && viewingPrompt.questions.length > 0 && (
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-medium text-emerald-400 mb-2">Questions & Answers</h4>
-                    <div className="space-y-3">
-                      {viewingPrompt.questions.map((q, i) => (
-                        <div key={i} className="bg-black/30 p-3 rounded-lg">
-                          <p className="text-xs text-white/60 mb-1">Q{i + 1}: {q}</p>
-                          <p className="text-sm font-medium">A: {viewingPrompt.answers[i] || "No answer"}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <h4 className="text-xs font-medium text-white/60 mb-1">User</h4>
+                    <p className="text-sm bg-black/30 p-2 rounded-lg">{viewingPrompt.userName || viewingPrompt.userEmail}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-medium text-white/60 mb-1">Title</h4>
+                    <p className="text-sm bg-black/30 p-2 rounded-lg truncate">{viewingPrompt.title || viewingPrompt.task}</p>
+                  </div>
+                </div>
+                {viewingPrompt.summary && (
+                  <div>
+                    <h4 className="text-xs font-medium text-white/60 mb-1">Summary</h4>
+                    <p className="text-sm bg-black/30 p-2 rounded-lg">{viewingPrompt.summary}</p>
                   </div>
                 )}
                 <div>
@@ -831,11 +847,14 @@ export default function AdminPage() {
                       {promptCopied ? "Copied!" : "Copy"}
                     </Button>
                   </div>
-                  <div className="text-sm bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-lg max-h-60 overflow-y-auto">
+                  <div className="text-sm bg-gradient-to-br from-teal-950/80 to-cyan-900/60 border border-teal-700 p-3 rounded-xl max-h-60 overflow-y-auto whitespace-pre-wrap">
                     {viewingPrompt.result}
                   </div>
                 </div>
-                <p className="text-xs text-white/40">Created: {formatDate(viewingPrompt.createdAt)}</p>
+                <div className="flex gap-4 text-xs text-white/40">
+                  <span>Created: {formatDate(viewingPrompt.createdAt)}</span>
+                  <span>Updated: {formatDate(viewingPrompt.updatedAt || viewingPrompt.createdAt)}</span>
+                </div>
               </div>
               <div className="p-4 border-t border-white/10 flex gap-3 flex-shrink-0">
                 <Button onClick={() => setViewingPrompt(null)} variant="outline" className="flex-1 border-white/10 text-white hover:bg-white/10">
@@ -843,12 +862,12 @@ export default function AdminPage() {
                 </Button>
                 <Button 
                   onClick={() => {
-                    deletePrompt(viewingPrompt.id);
+                    deletePrompt(viewingPrompt.chatId || viewingPrompt.id);
                     setViewingPrompt(null);
                   }} 
                   className="flex-1 bg-red-500 hover:bg-red-600"
                 >
-                  Delete Prompt
+                  Clear Prompt
                 </Button>
               </div>
             </div>

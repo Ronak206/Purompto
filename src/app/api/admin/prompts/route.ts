@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB, UserModel, PromptModel } from "@/lib/mongodb";
+import { connectDB, UserModel, ChatModel } from "@/lib/mongodb";
 
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "your-admin-secret-key";
 
-// Get all prompts (admin only)
+// Get all prompts (admin only) - fetches from chats with results
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -16,24 +16,31 @@ export async function GET(request: NextRequest) {
     
     await connectDB();
     
-    const query = userId ? { userId } : {};
-    const prompts = await (PromptModel as any).find(query)
+    // Fetch chats that have a result (generated prompts)
+    const query: any = { result: { $exists: true, $ne: "" } };
+    if (userId) query.userId = userId;
+    
+    const chats = await (ChatModel as any).find(query)
       .populate("userId", "email name")
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .limit(100);
     
     return NextResponse.json({
       success: true,
-      prompts: prompts.map((p: any) => ({
-        id: p._id,
-        userId: p.userId?._id,
-        userEmail: p.userId?.email,
-        userName: p.userId?.name,
-        task: p.task,
-        questions: p.questions ? JSON.parse(p.questions) : [],
-        answers: p.answers ? JSON.parse(p.answers) : {},
-        result: p.result,
-        createdAt: p.createdAt,
+      prompts: chats.map((chat: any) => ({
+        id: chat._id,
+        chatId: chat.chatId,
+        userId: chat.userId?._id,
+        userEmail: chat.userId?.email,
+        userName: chat.userId?.name,
+        title: chat.title,
+        task: chat.title, // Use title as task
+        result: chat.result,
+        summary: chat.summary || "",
+        status: chat.status,
+        messageCount: chat.messages?.length || 0,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
       })),
     });
   } catch (error) {
@@ -42,27 +49,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Delete a prompt (admin only)
+// Delete a prompt (deletes the chat's result)
 export async function DELETE(request: NextRequest) {
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);
-    const promptId = searchParams.get("promptId");
+    const chatId = searchParams.get("chatId");
     const adminSecret = searchParams.get("adminSecret");
     
     if (adminSecret !== ADMIN_SECRET) {
       return NextResponse.json({ error: "Unauthorized - Admin access required" }, { status: 401 });
     }
     
-    if (!promptId) {
-      return NextResponse.json({ error: "Prompt ID required" }, { status: 400 });
+    if (!chatId) {
+      return NextResponse.json({ error: "Chat ID required" }, { status: 400 });
     }
     
-    await (PromptModel as any).findByIdAndDelete(promptId);
+    // Clear the result from the chat
+    await (ChatModel as any).findByIdAndUpdate(chatId, { 
+      result: "", 
+      summary: "",
+      status: "active" 
+    });
     
     return NextResponse.json({
       success: true,
-      message: "Prompt deleted successfully",
+      message: "Prompt cleared successfully",
     });
   } catch (error) {
     console.error("Admin delete prompt error:", error);
