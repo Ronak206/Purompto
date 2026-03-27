@@ -1009,7 +1009,7 @@ export default function HomePage() {
                   <>
                     <div className="group relative">
                       <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
-                        <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
+                        <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                       </div>
                       {/* Retry button on hover - only show for last message before result when there's no result */}
                       {i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
@@ -1153,7 +1153,7 @@ export default function HomePage() {
                   <>
                     <div>
                       <div className={`px-3.5 py-2.5 rounded-[18px] ${theme.userBubble}`}>
-                        <div className="whitespace-pre-wrap text-[15px] leading-[1.5] text-right">{msg.content}</div>
+                        <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                       </div>
                     </div>
                     {/* User Avatar - beside bubble on the right */}
