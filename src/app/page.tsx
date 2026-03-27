@@ -183,7 +183,7 @@ export default function LandingPage() {
             <Lightbulb className="w-10 h-10 text-emerald-400 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Ready to Get Started?</h2>
             <p className={`${theme.textMuted} text-sm mb-4`}>
-              Contact us to get access and start creating perfect AI prompts today.
+              Contact us at <a href="mailto:robin241205@gmail.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">robin241205@gmail.com</a> to get access.
             </p>
             <Button onClick={() => setShowAuth(true)} className="bg-gradient-to-r from-emerald-500 to-teal-500">
               Login Now
@@ -193,8 +193,19 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className={`py-6 px-4 text-center`}>
-        <p className={`text-xs ${theme.textMuted2}`}>© 2026 Purompto. All rights reserved.</p>
+      <footer className={`py-8 px-4 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
+        <div className="max-w-5xl mx-auto text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+              <Sparkles className="w-3 h-3 text-white" />
+            </div>
+            <span className="font-semibold text-sm">Purompto</span>
+          </div>
+          <p className={`text-xs ${theme.textMuted2} mb-2`}>© 2026 Purompto. All rights reserved.</p>
+          <p className={`text-xs ${theme.textMuted}`}>
+            Contact: <a href="mailto:robin241205@gmail.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">robin241205@gmail.com</a>
+          </p>
+        </div>
       </footer>
 
       {/* Login Modal */}
@@ -214,7 +225,7 @@ export default function LandingPage() {
               </Button>
             </form>
             <p className={`mt-4 text-center text-xs ${theme.textMuted2}`}>
-              Don't have an account? Contact admin for access.
+              Don't have an account? Contact <a href="mailto:robin241205@gmail.com" className="text-emerald-400 hover:text-emerald-300 transition-colors">robin241205@gmail.com</a>
             </p>
           </div>
         </div>

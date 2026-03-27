@@ -255,6 +255,9 @@ Client pays → Admin creates account → Client uses service
      └──────── Admin controls access ←────────┘
 ```
 
+### Get Access
+Contact **robin241205@gmail.com** to get started.
+
 ## 💡 How It Works
 
 ### Prompt Generation Flow
@@ -337,3 +340,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ---
 
 Built with ❤️ by [Ronak](https://github.com/Ronak206)
+
+## 📧 Contact
+
+For access or inquiries, contact: **robin241205@gmail.com**
