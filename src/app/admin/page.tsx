@@ -64,6 +64,7 @@ type Tab = "users" | "prompts" | "chats";
 export default function AdminPage() {
   const [adminSecret, setAdminSecret] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("users");
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [prompts, setPrompts] = useState<PromptInfo[]>([]);
@@ -93,8 +94,28 @@ export default function AdminPage() {
   useEffect(() => {
     const savedSecret = localStorage.getItem("adminSecret");
     if (savedSecret) {
+      // Validate saved secret with server
       setAdminSecret(savedSecret);
-      setIsAuthenticated(true);
+      fetch(`/api/admin/users?adminSecret=${encodeURIComponent(savedSecret)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            setIsAuthenticated(true);
+            setUsers(data.users || []);
+          } else {
+            // Invalid secret, clear it
+            localStorage.removeItem("adminSecret");
+            setAdminSecret("");
+            setError("Session expired. Please login again.");
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("adminSecret");
+          setAdminSecret("");
+        })
+        .finally(() => setCheckingAuth(false));
+    } else {
+      setCheckingAuth(false);
     }
   }, []);
 
@@ -165,13 +186,31 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!adminSecret.trim()) {
       setError("Please enter admin secret");
       return;
     }
-    localStorage.setItem("adminSecret", adminSecret);
-    setIsAuthenticated(true);
+    setLoading(true);
+    setError("");
+    
+    try {
+      // Validate admin secret with server
+      const res = await fetch(`/api/admin/users?adminSecret=${encodeURIComponent(adminSecret)}`);
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        localStorage.setItem("adminSecret", adminSecret);
+        setIsAuthenticated(true);
+        setUsers(data.users || []);
+      } else {
+        setError(data.error || "Invalid admin secret");
+      }
+    } catch (e) {
+      setError("Failed to verify admin secret");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -347,6 +386,15 @@ export default function AdminPage() {
     }
   }, [error, success]);
 
+  // Loading screen while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
   // Login screen
   if (!isAuthenticated) {
     return (
@@ -383,14 +431,15 @@ export default function AdminPage() {
             </div>
             <Button 
               onClick={handleLogin}
+              disabled={loading}
               className="w-full bg-gradient-to-r from-emerald-500 to-teal-500"
             >
-              Access Admin Panel
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Access Admin Panel"}
             </Button>
           </div>
           
           <p className="mt-4 text-xs text-white/40 text-center">
-            Set ADMIN_SECRET in your .env file
+            Contact admin for access
           </p>
         </div>
       </div>
