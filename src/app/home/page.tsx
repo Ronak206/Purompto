@@ -1088,8 +1088,8 @@ export default function HomePage() {
               </div>
             )}
             
-            {/* Thinking state */}
-            {working && state !== "generating" && (
+            {/* Thinking state - before generation */}
+            {working && state !== "generating" && !result && (
               <div className="mb-2.5 flex gap-2.5">
                 {/* AI Avatar */}
                 <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
@@ -1188,6 +1188,22 @@ export default function HomePage() {
                 )}
               </div>
             ))}
+            
+            {/* Thinking state - shown when user continues after generation */}
+            {working && state !== "generating" && result && (
+              <div className="mb-2.5 flex gap-2.5">
+                {/* AI Avatar */}
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-white" />
+                </div>
+                <div className={`flex-1 max-w-full px-3.5 py-2.5 rounded-[18px] ${theme.aiBubble}`}>
+                  <div className="inline-flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                    <span className="text-[15px] leading-[1.5]">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Show error with retry button */}
             {error && (
