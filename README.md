@@ -5,6 +5,7 @@ An AI-powered prompt generation platform that helps users create perfect prompts
 ![Purompto](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?style=flat-square&logo=typescript)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=flat-square&logo=mongodb)
+![daisyUI](https://img.shields.io/badge/daisyUI-5.5-570df8?style=flat-square&logo=daisyui)
 
 ## ✨ Features
 
@@ -273,6 +274,7 @@ Contact **robin241205@gmail.com** to get started.
 - Gathers: purpose, audience, tone, format, length, context
 - Only generates when `readyToGenerate: true`
 - Retry also goes through analysis to verify readiness
+- Reasoning enabled for better prompt quality
 
 ## 🛠️ Tech Stack
 
@@ -280,20 +282,20 @@ Contact **robin241205@gmail.com** to get started.
 |----------|------------|
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript 5.9 |
-| Styling | Tailwind CSS 4 |
-| UI Components | shadcn/ui |
+| Styling | Tailwind CSS 4 + daisyUI 5.5 |
+| UI Components | shadcn/ui + daisyUI |
 | Database | MongoDB Atlas |
 | ODM | Mongoose |
-| AI Provider | OpenRouter (StepFun Step-3.5-Flash) |
+| AI Provider | OpenRouter (StepFun Step-3.5-Flash with reasoning) |
 | Authentication | JWT + HTTP-only cookies |
 | State Management | Zustand |
 | Deployment | Vercel |
 
 ## 🎨 UI Components & Styling
 
-### Message Bubbles
-- **User Bubbles**: Auto-width based on content, right-aligned, emerald gradient
-- **AI Bubbles**: Full-width, left-aligned, zinc background
+### Chat Bubbles (daisyUI)
+- **User Bubbles**: `chat-bubble-primary` (daisyUI), right-aligned with avatar
+- **AI Bubbles**: `bg-zinc-700 text-white` (dark) / `bg-gray-200 text-gray-900` (light), left-aligned
 - **Generated Prompt**: Teal/cyan gradient with copy button
 - **Radius**: 18px (ChatGPT style)
 
@@ -304,8 +306,8 @@ Contact **robin241205@gmail.com** to get started.
 
 ### Avatars
 - **User Avatar**: Emerald/teal gradient with user initial
-- **AI Avatar**: Zinc gradient with sparkle icon
-- **Flex Layout**: Avatar beside bubble with 10px gap
+- **AI Avatar**: Zinc gradient with Sparkles icon
+- **Layout**: daisyUI chat-start/chat-end with avatars beside bubbles
 
 ## 🚢 Deployment
 
