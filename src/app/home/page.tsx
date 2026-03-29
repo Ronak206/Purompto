@@ -1,9 +1,10 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
-  Sparkles, Copy, Check, Send, RefreshCcw, Loader2, 
-  LogOut, Moon, Sun, MessageSquare, Trash2
+  Sparkles, Copy, Check, Send, RefreshCcw, Loader2, CheckCircle, 
+  LogOut, ArrowRight, Lightbulb, Moon, Sun, MessageSquare, Trash2
 } from "lucide-react";
 import { generateSecurityPayload } from "@/lib/client-secure";
 import ReactMarkdown from "react-markdown";
@@ -37,10 +38,10 @@ function MarkdownRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown
       components={{
-        p: ({ children }) => <p className="mb-2 leading-relaxed">{children}</p>,
-        strong: ({ children }) => <strong className="font-semibold text-success">{children}</strong>,
-        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+        p: ({ children }) => <p className="mb-2 leading-[1.5] text-[15px]">{children}</p>,
+        strong: ({ children }) => <strong className="font-semibold text-emerald-400">{children}</strong>,
+        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1 text-[15px]">{children}</ul>,
+        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1 text-[15px]">{children}</ol>,
       }}
     >
       {content}
@@ -66,16 +67,23 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  // Track where in conversation the result was generated (to show result at correct position)
   const [resultGeneratedAtLength, setResultGeneratedAtLength] = useState<number | null>(null);
   
   const currentChatIdRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Track which chat is currently generating (for concurrent support)
   const generatingChatIdRef = useRef<string | null>(null);
+  // AbortController for cancelling generation
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Store conversation history per chat for retry functionality
   const [chatConversations, setChatConversations] = useState<Record<string, ChatMessage[]>>({});
+  // Track failed generations per chat
   const [failedGenerations, setFailedGenerations] = useState<Record<string, string>>({});
+  // Track interrupted generations per chat (when user navigates away during generation)
   const [interruptedGenerations, setInterruptedGenerations] = useState<Record<string, string>>({});
+  // Track partial streaming text per chat
   const [chatPartialText, setChatPartialText] = useState<Record<string, string>>({});
 
   // Sidebar state
@@ -91,8 +99,10 @@ export default function HomePage() {
     textarea.style.height = newHeight + 'px';
   }, []);
   
+  // Optimized input handlers to prevent INP blocking
   const handleTaskChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
     requestAnimationFrame(() => {
       setTask(value);
       adjustTextareaHeight(e.target);
@@ -101,6 +111,7 @@ export default function HomePage() {
   
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
+    // Use requestAnimationFrame to defer state update
     requestAnimationFrame(() => {
       setInput(value);
       adjustTextareaHeight(e.target);
@@ -109,7 +120,6 @@ export default function HomePage() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDark);
-    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
   }, [isDark]);
 
   useEffect(() => { 
@@ -139,6 +149,7 @@ export default function HomePage() {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" }); 
   }, [conversation, streamingText]);
 
+  // Close sidebar on escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSidebarOpen(false);
@@ -191,14 +202,17 @@ export default function HomePage() {
   const loadChat = async (chatId: string) => {
     if (!apiToken || !user) return;
     
+    // If currently generating on another chat, abort it and mark as interrupted
     if (generatingChatIdRef.current && generatingChatIdRef.current !== chatId) {
       const interruptedChatId = generatingChatIdRef.current;
       
+      // Abort the ongoing fetch request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
       
+      // Store the partial streaming text for this interrupted chat
       if (streamingText) {
         setChatPartialText(prev => ({
           ...prev,
@@ -213,6 +227,7 @@ export default function HomePage() {
       setState("chatting");
     }
     
+    // Load the new chat data
     try {
       const securityPayload = await generateSecurityPayload(user.id);
       const res = await fetch(`/api/chat?chatId=${chatId}`, {
@@ -225,12 +240,16 @@ export default function HomePage() {
         const data = await res.json();
         const chat = data.chat;
         
+        // Set the current chat ID
         currentChatIdRef.current = chat.chatId;
+        
+        // Store conversation for this chat (for retry)
         setChatConversations(prev => ({
           ...prev,
           [chat.chatId]: chat.messages || []
         }));
         
+        // Load this chat's specific data
         setTask(chat.title || "");
         setConversation(chat.messages || []);
         setResult(chat.result || "");
@@ -238,12 +257,14 @@ export default function HomePage() {
         setTips([]);
         setStreamingText("");
         
+        // If chat has a result, set resultGeneratedAtLength to show result at correct position
         if (chat.result) {
           setResultGeneratedAtLength(chat.messages?.length || 0);
         } else {
           setResultGeneratedAtLength(null);
         }
         
+        // Check if this chat had a failed or interrupted generation
         const chatFailedError = failedGenerations[chat.chatId];
         const chatInterrupted = interruptedGenerations[chat.chatId];
         const chatPartial = chatPartialText[chat.chatId];
@@ -252,6 +273,7 @@ export default function HomePage() {
           setError(chatFailedError);
           setState("chatting");
         } else if (chatInterrupted && !chat.result) {
+          // Show the partial text and retry option
           setStreamingText(chatPartial || "");
           setError(null);
           setState("chatting");
@@ -347,10 +369,12 @@ export default function HomePage() {
   };
   
   const reset = async () => { 
+    // If current chat has a generated result, mark it as completed before starting new
     if (currentChatIdRef.current && state === "generated") {
       await saveToChat({ status: "completed" });
     }
     
+    // Reset all states
     setState("idle"); 
     setConversation([]); 
     setResult(""); 
@@ -367,9 +391,11 @@ export default function HomePage() {
     setSidebarOpen(false);
   };
   
+  // Add message to conversation after generation (to continue refining)
   const addMessageAfterGeneration = async () => {
     if (!input.trim()) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
     
@@ -382,11 +408,14 @@ export default function HomePage() {
     const newConversation = [...conversation, userMessage];
     setConversation(newConversation);
     setInput("");
+    // Don't clear result - keep it visible for user to copy
     setState("chatting");
     
+    // Let browser paint before heavy work
     await new Promise(r => requestAnimationFrame(r));
     
     try {
+      // Mark as remaining since user wants to refine
       await saveToChat({ status: "remaining" });
       await saveToChat({ message: userMessage });
       
@@ -426,6 +455,7 @@ export default function HomePage() {
   };
 
   const continueChatting = async () => {
+    // Mark as "remaining" since user wants to continue refining
     await saveToChat({ status: "remaining" });
     setState("chatting");
     setResult("");
@@ -436,6 +466,7 @@ export default function HomePage() {
   const startConversation = async () => {
     if (!task.trim()) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
     setState("chatting");
@@ -447,6 +478,7 @@ export default function HomePage() {
     };
     setConversation([userMessage]);
     
+    // Let browser paint before heavy work
     await new Promise(r => requestAnimationFrame(r));
     
     try {
@@ -471,6 +503,7 @@ export default function HomePage() {
       const updatedConversation = [userMessage, assistantMessage];
       setConversation(updatedConversation);
       
+      // Store conversation for current chat (for retry)
       if (currentChatIdRef.current) {
         setChatConversations(prev => ({
           ...prev,
@@ -492,6 +525,7 @@ export default function HomePage() {
   const sendMessage = async () => {
     if (!input.trim() || working) return;
     
+    // Update UI immediately
     setWorking(true);
     setError(null);
     
@@ -503,6 +537,7 @@ export default function HomePage() {
     setConversation(prev => [...prev, userMessage]);
     setInput("");
     
+    // Let browser paint before heavy work
     await new Promise(r => requestAnimationFrame(r));
     
     const conversationSoFar = [...conversation, userMessage];
@@ -525,6 +560,7 @@ export default function HomePage() {
       const finalConversation = [...conversationSoFar, assistantMessage];
       setConversation(finalConversation);
       
+      // Store conversation for current chat (for retry)
       if (currentChatIdRef.current) {
         setChatConversations(prev => ({
           ...prev,
@@ -546,9 +582,11 @@ export default function HomePage() {
   };
 
   const generatePrompt = async (conversationHistory: ChatMessage[], retryCount = 0) => {
+    // Track which chat is generating
     const chatIdForGeneration = currentChatIdRef.current;
     generatingChatIdRef.current = chatIdForGeneration;
     
+    // Create new AbortController for this request
     abortControllerRef.current = new AbortController();
     
     setState("generating");
@@ -597,10 +635,12 @@ export default function HomePage() {
                 const data = JSON.parse(line.slice(6));
                 if (data.type === 'text') {
                   fullText += data.content;
+                  // Only update if still on same chat
                   if (generatingChatIdRef.current === chatIdForGeneration) {
                     setStreamingText(fullText);
                   }
                 } else if (data.type === 'complete') {
+                  // Clear any failed/interrupted generation for this chat
                   setFailedGenerations(prev => {
                     const updated = { ...prev };
                     delete updated[chatIdForGeneration];
@@ -617,6 +657,7 @@ export default function HomePage() {
                     return updated;
                   });
                   
+                  // Only update if still on same chat
                   if (generatingChatIdRef.current === chatIdForGeneration) {
                     setResult(data.prompt || fullText);
                     setSummary(data.summary || "");
@@ -627,6 +668,7 @@ export default function HomePage() {
                     setState("generated");
                   }
                   
+                  // Save to the correct chat
                   await saveToChat({ 
                     result: data.prompt || fullText,
                     summary: data.summary || "",
@@ -646,6 +688,7 @@ export default function HomePage() {
       }
       
     } catch (e) { 
+      // Don't show error if request was aborted intentionally
       if (e instanceof Error && e.name === 'AbortError') {
         console.log('Generation aborted');
         return;
@@ -653,11 +696,13 @@ export default function HomePage() {
       
       const errorMessage = e instanceof Error ? e.message : "Failed to generate prompt";
       
+      // Store the error for this specific chat
       setFailedGenerations(prev => ({
         ...prev,
         [chatIdForGeneration]: errorMessage
       }));
       
+      // Only show error if still on same chat
       if (generatingChatIdRef.current === chatIdForGeneration) {
         setError(errorMessage); 
         setState("chatting");
@@ -666,14 +711,17 @@ export default function HomePage() {
     }
   };
   
+  // Retry function - re-analyze to check if enough info before generating
   const retryGeneration = async () => {
     const chatId = currentChatIdRef.current;
+    // Get stored conversation for this chat
     const storedConversation = chatId ? chatConversations[chatId] : null;
     const conversationToUse = storedConversation || conversation;
     
     if (conversationToUse.length > 0) {
       setError(null);
       setStreamingText("");
+      // Clear the failed/interrupted generation for this chat
       if (chatId) {
         setFailedGenerations(prev => {
           const updated = { ...prev };
@@ -692,6 +740,7 @@ export default function HomePage() {
         });
       }
       
+      // Re-analyze to check if we have enough info
       setWorking(true);
       try {
         const r = await authFetch("/api/analyze", { method: "POST" }, { 
@@ -701,6 +750,7 @@ export default function HomePage() {
         const d = await r.json();
         if (!r.ok) throw new Error(d.error);
         
+        // Update conversation with any new questions
         if (d.questions && d.questions.length > 0) {
           const assistantMessage: ChatMessage = { 
             id: Date.now().toString(),
@@ -712,8 +762,10 @@ export default function HomePage() {
           setConversation(prev => [...prev, assistantMessage]);
           setState("chatting");
         } else if (d.readyToGenerate) {
+          // Only generate if AI confirms ready
           generatePrompt(conversationToUse);
         } else {
+          // Continue chatting
           setState("chatting");
         }
       } catch (e) {
@@ -765,24 +817,43 @@ export default function HomePage() {
     return groups;
   }, {});
 
+  const theme = {
+    bg: isDark ? "bg-zinc-950" : "bg-gray-50",
+    text: isDark ? "text-white" : "text-gray-900",
+    textMuted: isDark ? "text-zinc-400" : "text-gray-500",
+    textMuted2: isDark ? "text-zinc-500" : "text-gray-400",
+    border: isDark ? "border-zinc-800" : "border-gray-200",
+    bgCard: isDark ? "bg-zinc-900" : "bg-white",
+    bgInput: isDark ? "bg-zinc-800" : "bg-white",
+    sidebarBg: isDark ? "bg-zinc-900" : "bg-white",
+    promptBg: isDark ? "bg-gradient-to-br from-teal-950/80 to-cyan-900/60 border-teal-700" : "bg-gradient-to-br from-teal-50 to-cyan-100 border-teal-300",
+    promptText: isDark ? "text-teal-300" : "text-teal-700",
+    userBubble: isDark ? "bg-emerald-600 text-white" : "bg-emerald-500 text-white",
+    aiBubble: isDark ? "bg-zinc-800 text-white" : "bg-gray-100 text-gray-900",
+    tipBg: isDark ? "bg-amber-950/30 border-amber-900" : "bg-amber-50 border-amber-200",
+    tipText: isDark ? "text-amber-400" : "text-amber-600",
+    historyItem: isDark ? "hover:bg-zinc-800" : "hover:bg-gray-100",
+    historyItemActive: isDark ? "bg-zinc-800" : "bg-gray-100",
+  };
+
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-base-100">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+      <div className={`h-screen flex items-center justify-center ${theme.bg} ${theme.text}`}>
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-base-100">
-        <p className="text-base-content">Redirecting...</p>
+      <div className={`h-screen flex items-center justify-center ${theme.bg} ${theme.text}`}>
+        <p>Redirecting...</p>
       </div>
     );
   }
 
   return (
-    <div className="h-screen overflow-hidden flex bg-base-100 text-base-content font-sans" data-theme={isDark ? "dark" : "light"}>
+    <div className={`h-screen overflow-hidden flex ${theme.bg} ${theme.text} font-sans`}>
       
       {/* Sidebar Overlay */}
       {sidebarOpen && (
@@ -792,50 +863,63 @@ export default function HomePage() {
         />
       )}
 
-      {/* Sidebar - daisyUI drawer style */}
-      <aside className={`fixed z-50 h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-64 bg-base-200 border-r border-base-300 transition-transform duration-200 flex flex-col`}>
-        <div className="p-3 flex-shrink-0">
-          <button 
+      {/* Sidebar */}
+      <aside className={`fixed z-50 h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-64 ${theme.sidebarBg} border-r ${theme.border} transition-transform duration-200 flex flex-col`}>
+        <div className="p-2 flex-shrink-0 flex gap-1.5">
+          <Button 
             onClick={reset} 
-            className="btn btn-primary btn-sm w-full gap-2"
+            size="sm"
+            className="flex-1 justify-start bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 text-xs"
           >
-            <Sparkles className="w-4 h-4" /> New Chat
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" /> New Chat
+          </Button>
+          <button 
+            onClick={() => setSidebarOpen(false)}
+            className={`p-1.5 rounded-lg hover:bg-white/10 ${theme.textMuted} transition-colors flex-shrink-0`}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2" />
+              <path d="M9 3v18" />
+              <path d="M14 9h4" />
+              <path d="M14 13h4" />
+              <path d="M14 17h4" />
+            </svg>
           </button>
         </div>
 
         <ScrollArea className="flex-1">
           {loadingChats ? (
-            <div className="flex justify-center py-6">
-              <span className="loading loading-spinner loading-sm text-primary"></span>
-            </div>
+            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-emerald-500" /></div>
           ) : chats.length === 0 ? (
-            <div className="text-center py-8 px-3 text-base-content/50">
+            <div className={`text-center py-8 px-3 ${theme.textMuted2}`}>
               <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-50" />
               <p className="text-xs">No conversations</p>
             </div>
           ) : (
-            <div className="p-2">
+            <div className="p-1.5">
               {Object.entries(groupedChats).map(([group, items]) => (
-                <div key={group} className="mb-3">
-                  <div className="text-[10px] font-medium px-3 py-1 text-base-content/50 uppercase tracking-wider">{group}</div>
-                  <div className="space-y-1">
+                <div key={group} className="mb-2">
+                  <div className={`text-[10px] font-medium px-2 py-1 ${theme.textMuted2} uppercase tracking-wider`}>{group}</div>
+                  <div className="space-y-0.5">
                     {items.map((chat) => (
-                      <div
+                      <button
                         key={chat.id}
-                        className={`w-full text-left px-3 py-2 rounded-lg ${currentChatIdRef.current === chat.id ? 'bg-base-300' : 'bg-base-100'} cursor-pointer flex items-center justify-between group`}
                         onClick={() => loadChat(chat.id)}
+                        className={`w-full text-left px-2 py-1.5 rounded-md ${currentChatIdRef.current === chat.id ? theme.historyItemActive : theme.historyItem} transition-colors group`}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{chat.title}</p>
-                          <p className="text-[10px] text-base-content/50">{formatDate(chat.updatedAt)}</p>
+                        <div className="flex items-start justify-between gap-1">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium truncate">{chat.title}</p>
+                            <p className={`text-[10px] ${theme.textMuted2}`}>{formatDate(chat.updatedAt)}</p>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteChat(chat.id); }}
+                            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-500/20 rounded transition-opacity"
+                          >
+                            <Trash2 className="w-3 h-3 text-red-400" />
+                          </button>
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteChat(chat.id); }}
-                          className="btn btn-ghost btn-xs btn-circle text-error opacity-0 group-focus:opacity-100"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -844,19 +928,17 @@ export default function HomePage() {
           )}
         </ScrollArea>
 
-        {/* Sidebar Footer */}
-        <div className="p-3 border-t border-base-300 flex-shrink-0">
-          <div className="flex items-center gap-2 px-2 py-2 rounded-lg bg-base-300">
-            <div className="avatar placeholder">
-              <div className="bg-primary text-primary-content rounded-full w-8">
-                <span className="text-xs">{(user.name || user.email)[0].toUpperCase()}</span>
-              </div>
+        {/* Sidebar Footer - User Profile & Logout */}
+        <div className={`p-2 border-t ${theme.border} flex-shrink-0`}>
+          <div className={`flex items-center gap-2 px-2 py-2 rounded-lg ${theme.bgCard}`}>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+              <span className="text-white text-xs font-semibold">{(user.name || user.email)[0].toUpperCase()}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium truncate">{user.name || user.email.split("@")[0]}</p>
-              <p className="text-[10px] text-base-content/50">{user.totalPromptsGenerated || 0} prompts</p>
+              <p className={`text-[10px] ${theme.textMuted2}`}>{user.totalPromptsGenerated || 0} prompts</p>
             </div>
-            <button onClick={logout} className="btn btn-ghost btn-sm btn-circle text-error">
+            <button onClick={logout} className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-400 transition-colors">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
@@ -866,12 +948,13 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-full min-w-0">
         
-        {/* Header - daisyUI navbar style */}
-        <header className="h-14 flex-shrink-0 px-4 flex items-center justify-between border-b border-base-300 bg-base-100">
-          <div className="flex items-center gap-3">
+        {/* Header */}
+        <header className="h-12 flex-shrink-0 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* ChatGPT style sidebar toggle - same button to open/close */}
             <button 
               onClick={() => setSidebarOpen(!sidebarOpen)} 
-              className="btn btn-ghost btn-sm btn-square"
+              className={`p-1.5 rounded-lg hover:bg-white/10 ${theme.textMuted} transition-colors`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect width="18" height="18" x="3" y="3" rx="2" />
@@ -881,17 +964,15 @@ export default function HomePage() {
                 <path d="M14 17h4" />
               </svg>
             </button>
-            <div className="flex items-center gap-2">
-              <div className="avatar placeholder">
-                <div className="bg-primary text-primary-content rounded-lg w-8">
-                  <Sparkles className="w-4 h-4" />
-                </div>
+            <div className="flex items-center gap-2 ml-1">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
               <span className="font-semibold text-sm">Purompto</span>
             </div>
           </div>
-          <button onClick={() => setIsDark(!isDark)} className="btn btn-ghost btn-sm btn-circle">
-            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          <button onClick={() => setIsDark(!isDark)} className={`p-1.5 rounded-lg hover:bg-white/10 ${theme.textMuted}`}>
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </header>
 
@@ -900,13 +981,11 @@ export default function HomePage() {
           <div className="w-full max-w-2xl mx-auto px-4 py-6">
             {conversation.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="avatar placeholder mb-4">
-                  <div className="bg-primary text-primary-content rounded-xl w-14">
-                    <Sparkles className="w-7 h-7" />
-                  </div>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center mb-4">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <h1 className="text-xl font-semibold mb-1">How can I help you today?</h1>
-                <p className="text-base-content/60 text-sm mb-6">Tell me what you want to create</p>
+                <h1 className="text-lg font-semibold mb-1">How can I help you today?</h1>
+                <p className={`${theme.textMuted} text-sm mb-6`}>Tell me what you want to create</p>
                 
                 {/* Suggestions */}
                 <div className="flex flex-wrap gap-2 justify-center max-w-md">
@@ -914,7 +993,7 @@ export default function HomePage() {
                     <button
                       key={i}
                       onClick={() => setTask(suggestion)}
-                      className="badge badge-lg badge-outline cursor-pointer"
+                      className={`px-3 py-1.5 text-xs rounded-full ${theme.bgCard} border ${theme.border} ${theme.textMuted} hover:${theme.text} transition-colors`}
                     >
                       {suggestion}
                     </button>
@@ -923,42 +1002,45 @@ export default function HomePage() {
               </div>
             )}
             
-            {/* Messages using daisyUI chat component */}
+            {/* Render messages BEFORE the generated result */}
             {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
               <div key={msg.id || i} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'} mb-4`}>
                 <div className="chat-image avatar placeholder">
-                  <div className={`w-8 rounded-full ${msg.role === 'user' ? 'bg-primary text-primary-content' : 'bg-neutral text-neutral-content'}`}>
+                  <div className={`w-7 rounded-full ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
                     {msg.role === 'user' ? (
-                      <span className="text-xs">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
+                      <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                     ) : (
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
                     )}
                   </div>
                 </div>
                 <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-neutral'}`}>
-                  <div className="prose prose-sm max-w-none">
-                    <MarkdownRenderer content={msg.content} />
-                    {msg.questions && msg.questions.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {msg.questions.map((q, qi) => (
-                          <div key={qi} className="alert alert-soft alert-info text-sm">
-                            <div>
-                              <div className="font-medium">{q}</div>
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none">
+                      <MarkdownRenderer content={msg.content} />
+                      {msg.questions && msg.questions.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {msg.questions.map((q, qi) => (
+                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
                               {msg.questionReasons?.[qi] && (
-                                <div className="text-xs opacity-70 mt-1">{msg.questionReasons[qi]}</div>
+                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
                               )}
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {msg.role === 'user' && i === (resultGeneratedAtLength || conversation.length) - 1 && !result && state !== "generating" && !working && (
                   <div className="chat-footer">
                     <button
                       onClick={retryGeneration}
-                      className="btn btn-ghost btn-xs gap-1 text-base-content/50"
+                      className="btn btn-ghost btn-xs gap-1 opacity-60"
+                      title="Retry from here"
                     >
                       <RefreshCcw className="w-3 h-3" /> Retry
                     </button>
@@ -971,85 +1053,154 @@ export default function HomePage() {
             {state === "generating" && !streamingText && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-8 rounded-full bg-neutral text-neutral-content">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
                   </div>
                 </div>
                 <div className="chat-bubble chat-bubble-neutral">
                   <div className="flex items-center gap-2">
-                    <span className="loading loading-spinner loading-sm text-primary"></span>
-                    <span>Creating your prompt...</span>
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                    <span className="text-[15px] leading-[1.5]">Creating your prompt...</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Streaming result */}
-            {(state === "generating" && streamingText) && (
-              <div className="card card-border border-primary bg-base-200 mb-4">
-                <div className="card-body">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-primary">Generated Prompt</span>
-                    <span className="loading loading-spinner loading-xs text-primary"></span>
+            {/* Streaming output with markdown */}
+            {state === "generating" && streamingText && (
+              <div className="chat chat-start mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
                   </div>
+                </div>
+                <div className="chat-bubble chat-bubble-neutral">
+                  <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating your prompt...</div>
                   <div className="prose prose-sm max-w-none">
                     <MarkdownRenderer content={streamingText} />
+                    <span className="inline-block w-1.5 h-4 bg-emerald-400 animate-pulse ml-0.5" />
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Generated Result */}
-            {state === "generated" && result && (
-              <div className="card card-border border-success bg-success/10 mb-4">
-                <div className="card-body">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-success" />
-                      <span className="font-semibold text-success">Your Prompt is Ready!</span>
-                    </div>
-                    <button 
-                      onClick={copy}
-                      className="btn btn-success btn-sm gap-2"
-                    >
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copied ? "Copied!" : "Copy"}
-                    </button>
+            {/* Thinking state - before generation */}
+            {working && state !== "generating" && !result && (
+              <div className="chat chat-start mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
                   </div>
-                  <div className="prose prose-sm max-w-none">
-                    <MarkdownRenderer content={result} />
+                </div>
+                <div className="chat-bubble chat-bubble-neutral">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                    <span className="text-[15px] leading-[1.5]">Thinking...</span>
                   </div>
-                  {summary && (
-                    <div className="mt-3 text-sm text-base-content/70">
-                      <strong>Summary:</strong> {summary}
-                    </div>
-                  )}
-                  {tips && tips.length > 0 && (
-                    <div className="mt-3">
-                      <div className="text-sm font-medium mb-1">Tips:</div>
-                      <ul className="text-sm text-base-content/70 list-disc list-inside">
-                        {tips.map((tip, i) => (
-                          <li key={i}>{tip}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
             
-            {/* Continue chatting section */}
-            {state === "generated" && (
-              <div className="text-center py-4">
-                <p className="text-base-content/60 text-sm mb-3">Want to refine your prompt?</p>
-                <button onClick={continueChatting} className="btn btn-outline btn-primary btn-sm gap-2">
-                  Continue Chatting <span className="text-lg">→</span>
-                </button>
+            {/* Tips - shown below the conversation, above the generated prompt */}
+            {tips && tips.length > 0 && result && state !== "generating" && (
+              <div className="chat chat-end mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500">
+                    <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
+                  </div>
+                </div>
+                <div className="chat-bubble chat-bubble-primary">
+                  <div className="space-y-1.5">
+                    {tips.map((tip, i) => (
+                      <div key={i} className={`text-xs p-2 rounded-lg ${theme.tipBg} border ${theme.tipText}`}>
+                        💡 {tip}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
             
-            {/* Error */}
+            {/* Generated Result - show as a bubble if result exists and not currently generating */}
+            {result && state !== "generating" && (
+              <div className="chat chat-start mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  </div>
+                </div>
+                <div className={`chat-bubble ${theme.promptBg} border shadow-md max-w-full`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className={`flex items-center gap-2 ${theme.promptText}`}>
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="font-medium text-[15px]">{summary || "Your Prompt"}</span>
+                    </div>
+                    <Button variant="ghost" size="xs" onClick={copy} className={`${theme.promptText} hover:bg-teal-500/20 h-6 px-2`}>
+                      {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                      <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
+                    </Button>
+                  </div>
+                  <div className={`text-[15px] leading-[1.5] max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
+                    {result}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Render messages AFTER the generated result */}
+            {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
+              <div key={msg.id || `after-${i}`} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'} mb-4`}>
+                <div className="chat-image avatar placeholder">
+                  <div className={`w-7 rounded-full ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
+                    {msg.role === 'user' ? (
+                      <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                    )}
+                  </div>
+                </div>
+                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-neutral'}`}>
+                  {msg.role === 'user' ? (
+                    <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none">
+                      <MarkdownRenderer content={msg.content} />
+                      {msg.questions && msg.questions.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {msg.questions.map((q, qi) => (
+                            <div key={qi} className={`p-3 rounded-xl ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
+                              <div className="font-medium text-[15px] leading-[1.5]">💡 {q}</div>
+                              {msg.questionReasons?.[qi] && (
+                                <div className={`text-xs mt-1 ${theme.textMuted} italic`}>{msg.questionReasons[qi]}</div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {/* Thinking state - shown when user continues after generation */}
+            {working && state !== "generating" && result && (
+              <div className="chat chat-start mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  </div>
+                </div>
+                <div className="chat-bubble chat-bubble-neutral">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+                    <span className="text-[15px] leading-[1.5]">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Show error with retry button */}
             {error && (
               <div className="alert alert-error mb-4">
                 <span>{error}</span>
@@ -1059,64 +1210,112 @@ export default function HomePage() {
               </div>
             )}
             
+            {/* Show interrupted generation with partial text and retry option */}
+            {!error && streamingText && state !== "generating" && (
+              <div className="chat chat-start mb-4">
+                <div className="chat-image avatar placeholder">
+                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
+                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  </div>
+                </div>
+                <div className="chat-bubble chat-bubble-neutral">
+                  <div className="text-xs font-medium text-amber-400 mb-2">⚠️ Generation was interrupted</div>
+                  <div className="whitespace-pre-wrap text-[15px] leading-[1.5] opacity-70">{streamingText}</div>
+                  <button 
+                    onClick={retryGeneration} 
+                    className="btn btn-xs btn-warning mt-2"
+                  >
+                    <RefreshCcw className="w-3 h-3 mr-1" /> Continue Generation
+                  </button>
+                </div>
+              </div>
+            )}
+            
             <div ref={scrollRef} />
           </div>
         </main>
 
-        {/* Input Area */}
-        <footer className="flex-shrink-0 p-4 border-t border-base-300 bg-base-100">
+        {/* Bottom Input - ChatGPT style with button on top right */}
+        <div className="flex-shrink-0 p-4 pb-6">
           <div className="w-full max-w-2xl mx-auto">
-            {state === "idle" ? (
-              <div className="flex gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={task}
+            {state === "idle" && (
+              <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                  }}
+                  placeholder="Describe what you want to create..." 
+                  value={task} 
                   onChange={handleTaskChange}
-                  placeholder="What do you want to create?"
-                  className="textarea textarea-bordered flex-1 min-h-[52px] max-h-[200px] resize-none"
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      startConversation();
-                    }
-                  }}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); startConversation(); }}}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
-                <button 
-                  onClick={startConversation}
-                  disabled={working || !task.trim()}
-                  className="btn btn-primary btn-circle"
+                <Button 
+                  onClick={startConversation} 
+                  disabled={!task.trim() || working} 
+                  size="icon"
+                  className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
-                  {working ? <span className="loading loading-spinner loading-sm"></span> : <Send className="w-5 h-5" />}
-                </button>
+                  <Send className="w-4 h-4" />
+                </Button>
               </div>
-            ) : state !== "generated" ? (
-              <div className="flex gap-2">
-                <textarea
-                  ref={inputRef}
-                  value={input}
+            )}
+
+            {(state === "chatting" || state === "generating") && (
+              <div>
+                <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                  <textarea 
+                    ref={(el) => { 
+                      (inputRef as any).current = el;
+                    }}
+                    placeholder="Type your answer..." 
+                    value={input} 
+                    onChange={handleInputChange}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }}} 
+                    disabled={working}
+                    className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
+                  />
+                  <Button 
+                    onClick={sendMessage} 
+                    disabled={!input.trim() || working} 
+                    size="icon"
+                    className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className={`mt-2 flex items-center justify-center gap-1.5 text-xs ${theme.textMuted}`}>
+                  <Lightbulb className="w-3 h-3 text-emerald-500" />
+                  <span>Answer with detail for a better prompt</span>
+                </div>
+              </div>
+            )}
+
+            {state === "generated" && (
+              <div className={`relative flex items-start ${theme.bgInput} rounded-[18px] overflow-hidden`}>
+                <textarea 
+                  ref={(el) => { 
+                    (inputRef as any).current = el;
+                  }}
+                  placeholder="Add more details or ask for changes..." 
+                  value={input} 
                   onChange={handleInputChange}
-                  placeholder="Type your response..."
-                  className="textarea textarea-bordered flex-1 min-h-[52px] max-h-[200px] resize-none"
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addMessageAfterGeneration(); }}} 
+                  disabled={working}
+                  className={`flex-1 min-h-[52px] max-h-[200px] text-[15px] leading-[1.5] py-3 pl-4 pr-14 bg-transparent border-0 focus:ring-0 focus:outline-none resize-none overflow-y-auto ${isDark ? 'text-white' : 'text-gray-900'} ${isDark ? 'placeholder:text-white/40' : 'placeholder:text-gray-400'}`}
                 />
-                <button 
-                  onClick={sendMessage}
-                  disabled={working || !input.trim()}
-                  className="btn btn-primary btn-circle"
+                <Button 
+                  onClick={addMessageAfterGeneration} 
+                  disabled={!input.trim() || working} 
+                  size="icon"
+                  className="absolute bottom-3 right-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 w-9 h-9 rounded-xl flex-shrink-0"
                 >
-                  {working ? <span className="loading loading-spinner loading-sm"></span> : <Send className="w-5 h-5" />}
-                </button>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
-            ) : null}
+            )}
           </div>
-        </footer>
+        </div>
       </div>
     </div>
   );
