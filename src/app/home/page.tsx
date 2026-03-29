@@ -864,12 +864,12 @@ export default function HomePage() {
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed z-50 h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-64 ${theme.sidebarBg} border-r ${theme.border} transition-transform duration-200 flex flex-col`}>
+      <aside className={`fixed z-50 h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-64 ${theme.sidebarBg} transition-transform duration-200 flex flex-col`}>
         <div className="p-2 flex-shrink-0 flex gap-1.5">
           <Button 
             onClick={reset} 
             size="sm"
-            className="flex-1 justify-start bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white h-8 text-xs"
+            className="flex-1 justify-start bg-emerald-500 hover:bg-emerald-600 text-white h-8 text-xs"
           >
             <Sparkles className="w-3.5 h-3.5 mr-1.5" /> New Chat
           </Button>
@@ -1202,7 +1202,7 @@ export default function HomePage() {
 
             {/* Show error with retry button */}
             {error && (
-              <div className="alert alert-error mb-4">
+              <div className="alert alert-error mb-4 border-0">
                 <span>{error}</span>
                 <button onClick={retryGeneration} className="btn btn-sm btn-ghost">
                   <RefreshCcw className="w-4 h-4 mr-1" /> Retry
