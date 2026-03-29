@@ -1006,15 +1006,15 @@ export default function HomePage() {
             {conversation.slice(0, resultGeneratedAtLength || conversation.length).map((msg, i) => (
               <div key={msg.id || i} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'} mb-4`}>
                 <div className="chat-image avatar placeholder">
-                  <div className={`w-7 rounded-full ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
                     {msg.role === 'user' ? (
                       <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                      <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                     )}
                   </div>
                 </div>
-                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-neutral'}`}>
+                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                   ) : (
@@ -1053,11 +1053,11 @@ export default function HomePage() {
             {state === "generating" && !streamingText && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
-                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
+                    <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                   </div>
                 </div>
-                <div className="chat-bubble chat-bubble-neutral">
+                <div className={`chat-bubble ${isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span className="text-[15px] leading-[1.5]">Creating your prompt...</span>
@@ -1070,11 +1070,11 @@ export default function HomePage() {
             {state === "generating" && streamingText && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
-                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
+                    <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                   </div>
                 </div>
-                <div className="chat-bubble chat-bubble-neutral">
+                <div className={`chat-bubble ${isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   <div className={`text-xs font-medium ${theme.promptText} mb-2`}>✨ Generating your prompt...</div>
                   <div className="prose prose-sm max-w-none">
                     <MarkdownRenderer content={streamingText} />
@@ -1088,11 +1088,11 @@ export default function HomePage() {
             {working && state !== "generating" && !result && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
-                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
+                    <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                   </div>
                 </div>
-                <div className="chat-bubble chat-bubble-neutral">
+                <div className={`chat-bubble ${isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span className="text-[15px] leading-[1.5]">Thinking...</span>
@@ -1105,7 +1105,7 @@ export default function HomePage() {
             {tips && tips.length > 0 && result && state !== "generating" && (
               <div className="chat chat-end mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-500 to-teal-500">
                     <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                   </div>
                 </div>
@@ -1125,8 +1125,8 @@ export default function HomePage() {
             {result && state !== "generating" && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
-                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
+                    <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                   </div>
                 </div>
                 <div className={`chat-bubble ${theme.promptBg} border shadow-md max-w-full`}>
@@ -1151,15 +1151,15 @@ export default function HomePage() {
             {resultGeneratedAtLength !== null && conversation.slice(resultGeneratedAtLength).map((msg, i) => (
               <div key={msg.id || `after-${i}`} className={`chat ${msg.role === 'user' ? 'chat-end' : 'chat-start'} mb-4`}>
                 <div className="chat-image avatar placeholder">
-                  <div className={`w-7 rounded-full ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-zinc-600 to-zinc-700'}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${msg.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
                     {msg.role === 'user' ? (
                       <span className="text-white text-[10px] font-semibold">{(user?.name || user?.email || 'U')[0].toUpperCase()}</span>
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                      <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                     )}
                   </div>
                 </div>
-                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : 'chat-bubble-neutral'}`}>
+                <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-primary' : isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   {msg.role === 'user' ? (
                     <div className="whitespace-pre-wrap text-[15px] leading-[1.5]">{msg.content}</div>
                   ) : (
@@ -1187,11 +1187,11 @@ export default function HomePage() {
             {working && state !== "generating" && result && (
               <div className="chat chat-start mb-4">
                 <div className="chat-image avatar placeholder">
-                  <div className="w-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700">
-                    <Sparkles className="w-3.5 h-3.5 text-white mx-auto" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isDark ? 'bg-zinc-600' : 'bg-zinc-300'}`}>
+                    <Sparkles className={`w-3.5 h-3.5 ${isDark ? 'text-white' : 'text-zinc-700'}`} />
                   </div>
                 </div>
-                <div className="chat-bubble chat-bubble-neutral">
+                <div className={`chat-bubble ${isDark ? 'bg-zinc-700 text-white' : 'bg-gray-200 text-gray-900'}`}>
                   <div className="flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
                     <span className="text-[15px] leading-[1.5]">Thinking...</span>
