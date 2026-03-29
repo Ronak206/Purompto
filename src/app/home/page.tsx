@@ -1102,16 +1102,12 @@ export default function HomePage() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (state === "generated") {
-                        addMessageAfterGeneration();
-                      } else {
-                        sendMessage();
-                      }
+                      sendMessage();
                     }
                   }}
                 />
                 <button 
-                  onClick={state === "generated" ? addMessageAfterGeneration : sendMessage}
+                  onClick={sendMessage}
                   disabled={working || !input.trim()}
                   className="btn btn-primary btn-circle"
                 >
