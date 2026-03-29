@@ -1140,7 +1140,7 @@ export default function HomePage() {
                       <span className="text-xs">{copied ? "Copied!" : "Copy"}</span>
                     </Button>
                   </div>
-                  <div className={`text-[15px] leading-[1.5] max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30' : 'bg-white/70'} whitespace-pre-wrap`}>
+                  <div className={`text-[15px] leading-[1.5] max-h-60 overflow-y-auto p-3 rounded-xl ${isDark ? 'bg-black/30 text-white' : 'bg-white/70 text-gray-900'} whitespace-pre-wrap`}>
                     {result}
                   </div>
                 </div>
